@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">NewAudiocast</string>
+    <string name="cast_menu">cast_menu</string>
+</resources>
