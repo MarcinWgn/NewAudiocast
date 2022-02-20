@@ -1,12 +1,17 @@
 package com.wegrzyn.marcin.newaudiocast
 
 import android.app.Application
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import com.google.android.gms.cast.MediaInfo
+import com.google.android.gms.cast.MediaLoadRequestData
+import com.google.android.gms.cast.MediaMetadata
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManager
 import com.google.android.gms.cast.framework.SessionManagerListener
+import com.google.android.gms.common.images.WebImage
 
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -22,39 +27,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     inner class SessionManagerListenerImpl : SessionManagerListener<CastSession> {
         override fun onSessionEnded(p0: CastSession, p1: Int) {
-            TODO("Not yet implemented")
         }
 
         override fun onSessionEnding(p0: CastSession) {
-            TODO("Not yet implemented")
+
         }
 
         override fun onSessionResumeFailed(p0: CastSession, p1: Int) {
-            TODO("Not yet implemented")
         }
 
         override fun onSessionResumed(p0: CastSession, p1: Boolean) {
-            TODO("update menu")
+            mCastSession = p0
         }
 
         override fun onSessionResuming(p0: CastSession, p1: String) {
-            TODO("Not yet implemented")
+            mCastSession = p0
         }
 
         override fun onSessionStartFailed(p0: CastSession, p1: Int) {
-            TODO("Not yet implemented")
         }
 
         override fun onSessionStarted(p0: CastSession, p1: String) {
-            TODO("update menu")
+            mCastSession = p0
         }
 
         override fun onSessionStarting(p0: CastSession) {
-            TODO("Not yet implemented")
+            mCastSession = p0
         }
 
         override fun onSessionSuspended(p0: CastSession, p1: Int) {
-            TODO("Not yet implemented")
         }
 
     }
@@ -69,6 +70,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
         mSessionManager.removeSessionManagerListener(mSessionManagerListener, CastSession::class.java)
         mCastSession = null
+
+    }
+
+    fun radioCast(radioStation: RadioStation){
+
+        val mediaMetaData = MediaMetadata(MediaMetadata.MEDIA_TYPE_GENERIC)
+        mediaMetaData.putString(MediaMetadata.KEY_TITLE,radioStation.name)
+        mediaMetaData.addImage(WebImage(Uri.parse(radioStation.img)))
+
+        val mediaInfo = MediaInfo.Builder(radioStation.uri)
+            .setStreamType(MediaInfo.STREAM_TYPE_LIVE)
+            .setContentType("audio/mpeg3")
+            .setMetadata(mediaMetaData)
+            .build()
+
+        val mediaLoadRequestData = MediaLoadRequestData.Builder()
+            .setMediaInfo(mediaInfo)
+            .setAutoplay(false)
+            .build()
+
+        val remoteMediaClient = mCastSession?.remoteMediaClient
+        remoteMediaClient?.load(mediaLoadRequestData)
+
+        val waitToResult = remoteMediaClient?.load(mediaLoadRequestData)
+
+        waitToResult?.addStatusListener {
+            remoteMediaClient.play()
+        }
+
 
     }
 }

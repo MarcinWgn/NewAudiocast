@@ -1,18 +1,20 @@
 package com.wegrzyn.marcin.newaudiocast
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
 import androidx.compose.material.Text
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberImagePainter
 import com.google.android.gms.cast.framework.CastButtonFactory
 
@@ -85,13 +88,17 @@ class MainActivity : AppCompatActivity() {
         }
         }
     @Composable
-    fun RadioCard(station: RadioStation, modifier: Modifier){
+    fun RadioCard(station: RadioStation, modifier: Modifier, model: MainViewModel = viewModel() ){
+
+
         Card(elevation = 0.dp
             ,shape = RoundedCornerShape(10.dp)
             ,border = BorderStroke(1.dp, Color.Black)
             ,modifier = modifier
             .padding(8.dp)) {
-            Column() {
+            Column(modifier = Modifier.clickable {
+                model.radioCast(radioStation = station)
+            }) {
                 Text(style = AppTypography.titleLarge , text = station.name, modifier = Modifier.padding(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(
@@ -105,9 +112,18 @@ class MainActivity : AppCompatActivity() {
                             .size(80.dp)
                             .padding(8.dp)
                             .clip(CircleShape))
-                    Text(style = AppTypography.labelLarge, text = "Ramówka", modifier = Modifier.padding(8.dp))
+                    Text(style = AppTypography.labelLarge
+                        , text = "Ramówka"
+                        , modifier = Modifier.padding(8.dp)
+                            .clickable {
+                                goPage(station.page)
+                            })
                 }
             }
         }
+    }
+    fun goPage(uriString: String){
+        val uri = Uri.parse(uriString)
+        startActivity(Intent(Intent.ACTION_VIEW,uri))
     }
 }
