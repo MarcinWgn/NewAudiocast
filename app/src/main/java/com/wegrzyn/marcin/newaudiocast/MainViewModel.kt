@@ -3,7 +3,10 @@ package com.wegrzyn.marcin.newaudiocast
 import android.app.Application
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
@@ -11,6 +14,7 @@ import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManager
 import com.google.android.gms.cast.framework.SessionManagerListener
+import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.google.android.gms.common.images.WebImage
 
 
@@ -18,10 +22,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object{
         val TAG = "TAGTEST"
+
+        const val PLAYING = 1
+        const val PAUSE = 2
+        const val BUFFERING = 3
     }
+
+    lateinit var remoteMediaClient : RemoteMediaClient
+
+    private val _stateLiveData = MutableLiveData<Int>()
+    val stateLiveData : LiveData<Int> = _stateLiveData
+
+    private val _stNameLiveData = MutableLiveData(" ")
+    val stNameLiveData : LiveData<String> = _stNameLiveData
+
+    private val _imgUrlLivedata = MutableLiveData<Uri>()
+    val imgLiveData : LiveData<Uri> = _imgUrlLivedata
 
     private var mCastSession: CastSession? = null
     private var mSessionManager: SessionManager = CastContext.getSharedInstance(application).sessionManager
+
     private val mSessionManagerListener: SessionManagerListener<CastSession> =
         SessionManagerListenerImpl()
 
@@ -59,8 +79,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
     }
-
-
     init {
         mSessionManager.addSessionManagerListener(mSessionManagerListener, CastSession::class.java)
         Log.d(TAG, "ViewModel Start")
@@ -73,7 +91,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     }
 
-    fun radioCast(radioStation: RadioStation){
+    fun radioCast(radioStation: RadioStation,toast: ()->Unit ){
 
         val mediaMetaData = MediaMetadata(MediaMetadata.MEDIA_TYPE_GENERIC)
         mediaMetaData.putString(MediaMetadata.KEY_TITLE,radioStation.name)
@@ -90,15 +108,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .setAutoplay(false)
             .build()
 
-        val remoteMediaClient = mCastSession?.remoteMediaClient
-        remoteMediaClient?.load(mediaLoadRequestData)
+        if (mCastSession!=null&& mCastSession!!.remoteMediaClient != null){
+            Log.d(TAG,"remote media client is not null")
 
-        val waitToResult = remoteMediaClient?.load(mediaLoadRequestData)
+            remoteMediaClient = mCastSession?.remoteMediaClient!!
+            remoteMediaClient.load(mediaLoadRequestData)
+            val waitToResult = remoteMediaClient.load(mediaLoadRequestData)
+            waitToResult.addStatusListener {
+                remoteMediaClient.play()
+            }
+            remoteMediaClient.registerCallback( object : RemoteMediaClient.Callback(){
+                override fun onStatusUpdated() {
+                    super.onStatusUpdated()
+                    checkState(remoteMediaClient)
+                }
+            })
+        }else{
+            Log.d(TAG,"remote media client is null")
+            toast()
+        }
+    }
 
-        waitToResult?.addStatusListener {
-            remoteMediaClient.play()
+    fun checkState(remoteMediaClient: RemoteMediaClient){
+        Log.d(TAG, "update")
+
+        when{
+            remoteMediaClient.isPlaying -> _stateLiveData.postValue(PLAYING)
+            remoteMediaClient.isPaused -> _stateLiveData.postValue(PAUSE)
+            remoteMediaClient.isBuffering -> _stateLiveData.postValue(BUFFERING)
+        }
+        val stName = remoteMediaClient.mediaInfo?.metadata?.getString(MediaMetadata.KEY_TITLE)
+        _stNameLiveData.postValue(stName!!)
+        if(remoteMediaClient.mediaInfo?.metadata!!.hasImages()){
+            val imgUri = remoteMediaClient.mediaInfo?.metadata?.images?.get(0)?.url
+            _imgUrlLivedata.postValue(imgUri!!)
         }
 
+    }
+    fun playPause(){
+        when{
+            remoteMediaClient.isPaused -> remoteMediaClient.play()
+            remoteMediaClient.isPlaying -> remoteMediaClient.pause()
 
+        }
     }
 }
