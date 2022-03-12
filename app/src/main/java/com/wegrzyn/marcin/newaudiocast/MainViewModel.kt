@@ -3,7 +3,6 @@ package com.wegrzyn.marcin.newaudiocast
 import android.app.Application
 import android.net.Uri
 import android.util.Log
-import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -39,49 +38,81 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _imgUrlLivedata = MutableLiveData<Uri>()
     val imgLiveData : LiveData<Uri> = _imgUrlLivedata
 
+    private val _beltIsShowing = MutableLiveData<Boolean>(false)
+    val beltIsShowing = _beltIsShowing
+
     private var mCastSession: CastSession? = null
-    private var mSessionManager: SessionManager = CastContext.getSharedInstance(application).sessionManager
+    private val mSessionManager: SessionManager = CastContext.getSharedInstance(application).sessionManager
 
     private val mSessionManagerListener: SessionManagerListener<CastSession> =
         SessionManagerListenerImpl()
 
     inner class SessionManagerListenerImpl : SessionManagerListener<CastSession> {
         override fun onSessionEnded(p0: CastSession, p1: Int) {
+            Log.d(TAG,"session ended")
+            mCastSession = p0
+            _beltIsShowing.postValue(false)
         }
 
         override fun onSessionEnding(p0: CastSession) {
-
+            Log.d(TAG,"session ending ${p0.castDevice?.friendlyName}")
         }
 
         override fun onSessionResumeFailed(p0: CastSession, p1: Int) {
+            Log.d(TAG,"session resume ${p0.castDevice?.friendlyName}")
+
+            _beltIsShowing.postValue(false)
         }
 
         override fun onSessionResumed(p0: CastSession, p1: Boolean) {
+            Log.d(TAG,"session resumed ${p0.castDevice?.friendlyName} ${p0.applicationMetadata.toString()}")
             mCastSession = p0
+
+
         }
 
         override fun onSessionResuming(p0: CastSession, p1: String) {
-            mCastSession = p0
+            Log.d(TAG,"session Resuming ${p0.castDevice?.friendlyName}")
         }
 
         override fun onSessionStartFailed(p0: CastSession, p1: Int) {
+            Log.d(TAG,"session start failed ${p0.castDevice?.friendlyName}")
+
+            _beltIsShowing.postValue(false)
         }
 
+
         override fun onSessionStarted(p0: CastSession, p1: String) {
+
+            Log.d(TAG,"session starded ${p0.castDevice?.friendlyName}")
             mCastSession = p0
+
+
+
         }
 
         override fun onSessionStarting(p0: CastSession) {
-            mCastSession = p0
+            Log.d(TAG,"session starting ${p0.castDevice?.friendlyName}")
         }
 
         override fun onSessionSuspended(p0: CastSession, p1: Int) {
+            Log.d(TAG,"session suspended ${p0.castDevice?.friendlyName}")
+            _beltIsShowing.postValue(false)
         }
 
     }
     init {
+        mCastSession = mSessionManager.currentCastSession
+
+        if (mCastSession!= null){
+
+            remoteMediaClient = mCastSession?.remoteMediaClient!!
+
+            checkState(remoteMediaClient)
+        }
+
         mSessionManager.addSessionManagerListener(mSessionManagerListener, CastSession::class.java)
-        Log.d(TAG, "ViewModel Start")
+        Log.d(TAG, "ViewModel Start --> init")
     }
 
     override fun onCleared() {
@@ -89,7 +120,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         mSessionManager.removeSessionManagerListener(mSessionManagerListener, CastSession::class.java)
         mCastSession = null
 
+        Log.d(TAG,"onCleared")
     }
+
 
     fun radioCast(radioStation: RadioStation,toast: ()->Unit ){
 
@@ -131,11 +164,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun checkState(remoteMediaClient: RemoteMediaClient){
         Log.d(TAG, "update")
-
         when{
-            remoteMediaClient.isPlaying -> _stateLiveData.postValue(PLAYING)
-            remoteMediaClient.isPaused -> _stateLiveData.postValue(PAUSE)
-            remoteMediaClient.isBuffering -> _stateLiveData.postValue(BUFFERING)
+            remoteMediaClient.isPlaying -> {
+                _stateLiveData.postValue(PLAYING)
+                _beltIsShowing.postValue(true)
+            }
+
+            remoteMediaClient.isPaused -> {
+                _stateLiveData.postValue(PAUSE)
+                _beltIsShowing.postValue(true)
+            }
+
+            remoteMediaClient.isBuffering -> {
+                _stateLiveData.postValue(BUFFERING)
+                _beltIsShowing.postValue(true)
+            }
         }
         val stName = remoteMediaClient.mediaInfo?.metadata?.getString(MediaMetadata.KEY_TITLE)
         _stNameLiveData.postValue(stName!!)

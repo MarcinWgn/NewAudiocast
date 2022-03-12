@@ -69,11 +69,11 @@ class MainActivity : AppCompatActivity() {
             val (list, belt) = createRefs()
             Mylist(modifier = Modifier
                 .padding(top = 8.dp, bottom = 8.dp)
-                .constrainAs(list){
-                start.linkTo(parent.start)
-                top.linkTo(parent.top)
-                end.linkTo(parent.end)
-            })
+                .constrainAs(list) {
+                    start.linkTo(parent.start)
+                    top.linkTo(parent.top)
+                    end.linkTo(parent.end)
+                })
             ControlBelt(modifier = Modifier.constrainAs(belt){
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
@@ -143,7 +143,7 @@ class MainActivity : AppCompatActivity() {
                     Text(style = AppTypography.bodyMedium
                         , text = "Ramówka"
                         , modifier = Modifier
-                            .padding(16.dp)
+                            .padding(start = 8.dp, top = 16.dp, bottom = 16.dp, end = 8.dp)
                             .clickable {
                                 goPage(station.page)
                             })
@@ -162,68 +162,72 @@ class MainActivity : AppCompatActivity() {
         val value by model.stateLiveData.observeAsState()
         val name by model.stNameLiveData.observeAsState()
         val imgUri by model.imgLiveData.observeAsState()
-        
-        Card (modifier = modifier
-            .fillMaxWidth(1f)
-            .padding(start = 24.dp, end = 24.dp, bottom = 16.dp)
-            ,shape = RoundedCornerShape(20.dp)
-            ,border = BorderStroke(1.dp, Color.Black)){
+        val isShowing by model.beltIsShowing.observeAsState(false)
 
-            ConstraintLayout {
+        if(isShowing){
+            Card (modifier = modifier
+                .fillMaxWidth(1f)
+                .padding(start = 24.dp, end = 24.dp, bottom = 16.dp)
+                ,shape = RoundedCornerShape(20.dp)
+                ,border = BorderStroke(1.dp, Color.Black)){
 
-                val (image, text, button, progress) = createRefs()
+                ConstraintLayout {
 
-                Image(painter = rememberImagePainter(data = imgUri
-                    ,builder = {
-                    crossfade(500)
-                } ),contentDescription = null, modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .constrainAs(image) {
-                        start.linkTo(parent.start, margin = 16.dp)
-                        top.linkTo(parent.top)
-                        bottom.linkTo(parent.bottom)
-                    })
-                Text(style = AppTypography.titleLarge, modifier = Modifier
-                    .padding(16.dp)
-                    .constrainAs(button) {
-                        start.linkTo(image.end, margin = 24.dp)
-                        bottom.linkTo(parent.bottom)
-                        top.linkTo(parent.top)
-                    }, text = name!!)
-                IconButton(onClick = { /*TODO*/ }, modifier = Modifier
-                    .constrainAs(text) {
-                        top.linkTo(parent.top, margin = 16.dp)
-                        end.linkTo(parent.end, margin = 16.dp)
-                        bottom.linkTo(parent.bottom, margin = 16.dp)
-                    }) {
-                    if(value == MainViewModel.PLAYING || value == MainViewModel.PAUSE){
-                        Icon(
-                            imageVector =
-                            when (value) {
-                                MainViewModel.PLAYING -> ImageVector.vectorResource(id = R.drawable.pause_24)
-                                MainViewModel.PAUSE -> ImageVector.vectorResource(id = R.drawable.play_24)
-                                else -> ImageVector.vectorResource(id = R.drawable.play_24)
-                            }, contentDescription = null
-                            , modifier = Modifier
-                                .padding(8.dp)
-                                .size(35.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                model.playPause()
-                            }
-                        )
+                    val (image, text, button, progress) = createRefs()
+
+                    Image(painter = rememberImagePainter(data = imgUri
+                        ,builder = {
+                            crossfade(500)
+                        } ),contentDescription = null, modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .constrainAs(image) {
+                            start.linkTo(parent.start, margin = 16.dp)
+                            top.linkTo(parent.top)
+                            bottom.linkTo(parent.bottom)
+                        })
+                    Text(style = AppTypography.titleLarge, modifier = Modifier
+                        .padding(16.dp)
+                        .constrainAs(button) {
+                            start.linkTo(image.end, margin = 24.dp)
+                            bottom.linkTo(parent.bottom)
+                            top.linkTo(parent.top)
+                        }, text = name!!)
+                    IconButton(onClick = { /*TODO*/ }, modifier = Modifier
+                        .constrainAs(text) {
+                            top.linkTo(parent.top, margin = 16.dp)
+                            end.linkTo(parent.end, margin = 16.dp)
+                            bottom.linkTo(parent.bottom, margin = 16.dp)
+                        }) {
+                        if(value == MainViewModel.PLAYING || value == MainViewModel.PAUSE){
+                            Icon(
+                                imageVector =
+                                when (value) {
+                                    MainViewModel.PLAYING -> ImageVector.vectorResource(id = R.drawable.pause_24)
+                                    MainViewModel.PAUSE -> ImageVector.vectorResource(id = R.drawable.play_24)
+                                    else -> ImageVector.vectorResource(id = R.drawable.play_24)
+                                }, contentDescription = null
+                                , modifier = Modifier
+                                    .padding(8.dp)
+                                    .size(35.dp)
+                                    .clip(CircleShape)
+                                    .clickable {
+                                        model.playPause()
+                                    }
+                            )
+                        }
                     }
-                }
-                if (value == MainViewModel.BUFFERING){
-                CircularProgressIndicator(modifier = Modifier
-                    .constrainAs(progress) {
-                        top.linkTo(parent.top, margin = 16.dp)
-                        end.linkTo(parent.end, margin = 20.dp)
-                        bottom.linkTo(parent.bottom, margin = 16.dp)
-                    }) 
+                    if (value == MainViewModel.BUFFERING){
+                        CircularProgressIndicator(modifier = Modifier
+                            .constrainAs(progress) {
+                                top.linkTo(parent.top, margin = 16.dp)
+                                end.linkTo(parent.end, margin = 20.dp)
+                                bottom.linkTo(parent.bottom, margin = 16.dp)
+                            })
+                    }
                 }
             }
         }
+
     }
 }
