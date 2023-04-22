@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,7 +36,11 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.ImageLoader
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import coil.decode.Decoder
+import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.google.android.gms.cast.framework.CastButtonFactory
 
@@ -152,9 +157,10 @@ class MainActivity : AppCompatActivity() {
                     Image(
                         painter = rememberAsyncImagePainter(
                             ImageRequest.Builder(LocalContext.current).data(data = station.img)
-                                .apply(block = fun ImageRequest.Builder.() {
-                                    crossfade(500)
-                                }).build()
+                                .placeholder(R.drawable.baseline_radio_24)
+                                .decoderFactory(SvgDecoder.Factory())
+                                .crossfade(1000)
+                                .build()
                         ),
                         contentDescription = null,
                         modifier = Modifier
@@ -198,20 +204,23 @@ class MainActivity : AppCompatActivity() {
 
                 ConstraintLayout(modifier = Modifier.fillMaxWidth(1f)) {
                     val (image, text, button, progress, device) = createRefs()
-
                     Image(painter = rememberAsyncImagePainter(
-                        ImageRequest.Builder(LocalContext.current).data(data = imgUri)
-                            .apply(block = fun ImageRequest.Builder.() {
-                                crossfade(500)
-                            }).build()
-                    ), contentDescription = null, modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .constrainAs(image) {
-                            start.linkTo(parent.start, margin = 16.dp)
-                            top.linkTo(parent.top)
-                            bottom.linkTo(parent.bottom)
-                        })
+                        ImageRequest.Builder(LocalContext.current)
+                            .data(data = imgUri)
+                            .placeholder(R.drawable.baseline_radio_24)
+                            .decoderFactory(SvgDecoder.Factory())
+                            .crossfade(500)
+                            .build()
+                    ),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .constrainAs(image) {
+                                start.linkTo(parent.start, margin = 16.dp)
+                                top.linkTo(parent.top)
+                                bottom.linkTo(parent.bottom)
+                            })
                     Text(
                         style = AppTypography.titleLarge, modifier = Modifier
                             .padding(16.dp)
