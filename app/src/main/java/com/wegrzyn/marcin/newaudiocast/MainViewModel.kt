@@ -41,8 +41,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _beltIsShowing = MutableLiveData<Boolean>(false)
     val beltIsShowing = _beltIsShowing
 
+    private val _castDevName = MutableLiveData<String>("")
+    val castDevName : LiveData<String> = _castDevName
+
     private var mCastSession: CastSession? = null
     private val mSessionManager: SessionManager = CastContext.getSharedInstance(application).sessionManager
+
+
 
     private val mSessionManagerListener: SessionManagerListener<CastSession> =
         SessionManagerListenerImpl()
@@ -52,6 +57,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             Log.d(TAG,"session ended")
             mCastSession = p0
             _beltIsShowing.postValue(false)
+
         }
 
         override fun onSessionEnding(p0: CastSession) {
@@ -163,7 +169,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun checkState(remoteMediaClient: RemoteMediaClient){
-        Log.d(TAG, "update")
+
         when{
             remoteMediaClient.isPlaying -> {
                 _stateLiveData.postValue(PLAYING)
@@ -186,7 +192,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val imgUri = remoteMediaClient.mediaInfo?.metadata?.images?.get(0)?.url
             _imgUrlLivedata.postValue(imgUri!!)
         }
-
+        _castDevName.postValue(mCastSession?.castDevice?.friendlyName ?: "")
     }
     fun playPause(){
         when{
