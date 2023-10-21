@@ -5,20 +5,33 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.Menu
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -30,19 +43,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.ImageLoader
-import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
-import coil.decode.Decoder
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.google.android.gms.cast.framework.CastButtonFactory
+import com.wegrzyn.marcin.newaudiocast.MainViewModel.Companion.TAG
 
 class MainActivity : AppCompatActivity() {
 
@@ -50,8 +62,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-
         val viewModel = ViewModelProvider(this)[MainViewModel::class.java]
+
         val composeView = findViewById<ComposeView>(R.id.compose_layout_id)
         composeView.setContent {
             AppTheme {
@@ -62,6 +74,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "onResume: ")
 
     }
 
@@ -77,10 +95,8 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun PortraitView() {
-
         Scaffold(bottomBar = {
             ControlBelt(modifier = Modifier)
         }) {
@@ -153,7 +169,11 @@ class MainActivity : AppCompatActivity() {
                     style = AppTypography.titleLarge, text = station.name, modifier = Modifier
                         .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp)
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Image(
                         painter = rememberAsyncImagePainter(
                             ImageRequest.Builder(LocalContext.current).data(data = station.img)
@@ -168,11 +188,20 @@ class MainActivity : AppCompatActivity() {
                             .padding(8.dp)
                             .clip(CircleShape)
                     )
-                    Text(style = AppTypography.bodySmall, text = "Ramówka", modifier = Modifier
-                        .padding(start = 8.dp, top = 16.dp, bottom = 16.dp, end = 8.dp)
-                        .clickable {
-                            goPage(station.page, ctx)
-                        })
+                    Icon(
+                        painter = painterResource(id = R.drawable.round_playlist_play_24),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .clickable {
+                                goPage(station.page, ctx)
+                            }
+                    )
+//                    Text(style = AppTypography.bodySmall, text = "Ramówka", modifier = Modifier
+//                        .padding(start = 8.dp, top = 16.dp, bottom = 16.dp, end = 8.dp)
+//                        .clickable {
+//                            goPage(station.page, ctx)
+//                        })
                 }
             }
         }

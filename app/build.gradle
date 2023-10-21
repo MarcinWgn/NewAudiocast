@@ -1,34 +1,34 @@
 plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
+    id ("com.android.application")
+    id ("org.jetbrains.kotlin.android")
 }
 
 android {
 
-    compileSdk 33
+    compileSdk = 34
 
     defaultConfig {
 
+        applicationId = "com.wegrzyn.marcin.newaudiocast"
+        minSdk = 21
+        targetSdk = 34
 
-        compileSdkPreview = "UpsideDownCake"
+        versionCode = 1
+        versionName = "1.0"
 
-        applicationId "com.wegrzyn.marcin.newaudiocast"
-        minSdk 21
-        targetSdk 33
-        versionCode 1
-        versionName "1.0"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner  = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures {
         // Enables Jetpack Compose for this module
-        compose true
+        compose = true
     }
 
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
@@ -36,44 +36,45 @@ android {
         targetCompatibility JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = '11'
+        jvmTarget = "11"
     }
     composeOptions {
-        kotlinCompilerExtensionVersion '1.4.6'
+        kotlinCompilerExtensionVersion "1.5.3"
     }
-    namespace 'com.wegrzyn.marcin.newaudiocast'
+    namespace "com.wegrzyn.marcin.newaudiocast"
 }
 
 dependencies {
 
-    implementation 'androidx.core:core-ktx:1.10.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.compose.material3:material3:1.0.1'
+    implementation (libs.androidx.core.ktx)
+    implementation (libs.androidx.appcompat)
+    implementation (libs.androidx.material3)
 
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1'
-    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.6.1'
-    implementation 'androidx.fragment:fragment-ktx:1.5.7'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.mediarouter:mediarouter:1.6.0-alpha03'
-    implementation 'com.google.android.gms:play-services-cast-framework:21.3.0'
+    implementation (libs.androidx.lifecycle.viewmodel.ktx)
+    implementation (libs.androidx.lifecycle.livedata.ktx)
+    implementation (libs.androidx.fragment.ktx)
+    implementation (libs.androidx.constraintlayout)
+    implementation (libs.androidx.mediarouter)
+    implementation (libs.play.services.cast.framework)
 
-    implementation 'androidx.activity:activity-compose:1.7.0'
+    implementation (libs.androidx.activity.compose)
     // Compose Material Design
-    implementation 'androidx.compose.material:material:1.4.2'
+    implementation (libs.androidx.material)
     // Animations
-    implementation 'androidx.compose.animation:animation:1.4.2'
+    implementation (libs.androidx.animation)
     // Tooling support (Previews, etc.)
-    implementation 'androidx.compose.ui:ui-tooling:1.4.2'
+    implementation (libs.androidx.ui.tooling)
     // Integration with ViewModels
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1'
-    implementation 'androidx.compose.runtime:runtime-livedata:1.4.2'
-    implementation 'androidx.constraintlayout:constraintlayout-compose:1.0.1'
+    implementation (libs.androidx.lifecycle.viewmodel.compose)
+    implementation (libs.androidx.runtime.livedata)
+    implementation (libs.androidx.constraintlayout.compose)
 
-    implementation 'io.coil-kt:coil-compose:2.3.0'
-    implementation"io.coil-kt:coil-svg:2.3.0"
-    implementation 'com.google.android.material:material:1.8.0'
+    implementation (libs.coil.compose)
+    implementation (libs.coil.svg)
+    implementation (libs.material)
+    implementation (libs.androidx.core.ktx)
 
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    testImplementation ("junit:junit:4.13.2")
+    androidTestImplementation ("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation ("androidx.test.espresso:espresso-core:3.5.1")
 }
