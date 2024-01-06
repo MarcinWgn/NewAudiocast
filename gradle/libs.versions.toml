@@ -1,24 +1,29 @@
 [versions]
+androidx-junit = "1.1.5"
+espresso-core = "3.5.1"
+junit = "4.13.2"
 ksp ="1.8.21-1.0.11"
-kotlin="1.9.10"
-agp = "8.1.2"
+kotlin="1.9.21"
+agp = "8.1.4"
 core-ktx = "1.12.0"
-activity-compose = "1.8.0"
+activity-compose = "1.8.2"
 animation = "1.5.4"
 appcompat = "1.6.1"
-coil-svg = "2.4.0"
-coil-compose = "2.4.0"
+coil-svg = "2.5.0"
+coil-compose = "2.5.0"
 constraintlayout = "2.1.4"
 constraintlayout-compose = "1.0.1"
-fragment-ktx = "1.6.1"
-google-material = "1.10.0"
+fragment-ktx = "1.6.2"
+google-material = "1.11.0"
 lifecycle-viewmodel-ktx = "2.6.2"
 material = "1.5.4"
 material3 = "1.1.2"
-play-services-cast-framework = "21.3.0"
+play-services-cast-framework = "21.4.0"
 mediarouter = "1.6.0"
 runtime-livedata = "1.5.4"
 ui-tooling = "1.5.4"
+
+kotlinCompilerExtensionVersion="1.5.7"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core: core-ktx", version.ref = "core-ktx" }
@@ -27,7 +32,9 @@ androidx-animation = { module = "androidx.compose.animation:animation", version.
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayout" }
 androidx-constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "constraintlayout-compose" }
+androidx-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso-core" }
 androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment-ktx" }
+androidx-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-junit" }
 androidx-lifecycle-livedata-ktx = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "lifecycle-viewmodel-ktx" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle-viewmodel-ktx" }
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle-viewmodel-ktx" }
@@ -37,6 +44,7 @@ androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedat
 androidx-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "ui-tooling" }
 coil-svg = { module = "io.coil-kt:coil-svg", version.ref = "coil-svg" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil-compose" }
+junit = { module = "junit:junit", version.ref = "junit" }
 material = { module = "com.google.android.material:material", version.ref = "google-material" }
 play-services-cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "play-services-cast-framework" }
 androidx-mediarouter = { module = "androidx.mediarouter:mediarouter", version.ref = "mediarouter" }
