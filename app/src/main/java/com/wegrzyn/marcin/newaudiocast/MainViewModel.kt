@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.google.android.gms.cast.Cast
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
@@ -153,7 +154,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val mediaInfo = MediaInfo.Builder(radioStation.uri)
             .setStreamType(MediaInfo.STREAM_TYPE_LIVE)
-            .setContentType("audio/mpeg3")
+            .setContentType("audio/mpeg")
             .setMetadata(mediaMetaData)
             .build()
 
@@ -166,10 +167,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             Log.d(TAG, "remote media client is not null")
 
             remoteMediaClient = mCastSession?.remoteMediaClient!!
-            remoteMediaClient.load(mediaLoadRequestData)
+
             val waitToResult = remoteMediaClient.load(mediaLoadRequestData)
+
             waitToResult.addStatusListener {
                 remoteMediaClient.play()
+            }
+            waitToResult.setResultCallback {
+                Log.d(TAG, "wynik data: ${it.mediaError?.type}")
+                Log.d(TAG, "wynik error: ${it.mediaError?.detailedErrorCode}")
             }
             remoteMediaClient.registerCallback(object : RemoteMediaClient.Callback() {
                 override fun onStatusUpdated() {
