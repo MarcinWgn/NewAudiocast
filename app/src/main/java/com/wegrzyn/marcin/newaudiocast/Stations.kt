@@ -13,7 +13,8 @@ class Stations {
             RadioStation("Antyradio","https://n-12-2.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx","https://gfx.antyradio.pl/design/antyradio/src/images/logo.png","https://www.antyradio.pl/radio/Ramowka"),
             RadioStation("Eska Rock","https://ic1.smcdn.pl/5380-1.mp3", "https://cdn.files.smcloud.net/t/logo.svg","https://www.eskarock.pl/program/"),
             RadioStation("RMF","http://31.192.216.3/rmf_fm","https://www.rmf.fm/2018/img/rmf-fm-stopka.gif?2","https://www.rmf.fm/ramowka/"),
-            RadioStation("ZET","http://zt01.cdn.eurozet.pl/zet-net.mp3","https://gfx.radiozet.pl/extension/radiozet-header-2/design/standard/images/logo--red.svg","https://player.radiozet.pl/Ramowka")
+            RadioStation("ZET","http://zt01.cdn.eurozet.pl/zet-net.mp3","https://gfx.radiozet.pl/extension/radiozet-header-2/design/standard/images/logo--red.svg","https://player.radiozet.pl/Ramowka"),
+            RadioStation("Pogoda","https://radiostream.pl/tuba139-1.mp3","https://radiopogoda.pl/wp-content/themes/agora_wave/assets/rp/logoRP_kolor_a.png","https://radiopogoda.pl/ramowka")
         )
     }
 }

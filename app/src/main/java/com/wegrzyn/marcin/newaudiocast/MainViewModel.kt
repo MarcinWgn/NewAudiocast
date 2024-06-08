@@ -17,10 +17,14 @@ import com.google.android.gms.cast.framework.SessionManagerListener
 import com.google.android.gms.cast.framework.media.NotificationOptions
 import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.google.android.gms.common.images.WebImage
+import java.io.Closeable
+import java.lang.AutoCloseable
 import java.util.concurrent.Executors
 
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+
+
 
     companion object {
         val TAG = "TAGTEST"
@@ -50,7 +54,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var mCastSession: CastSession? = null
     private var mSessionManager: SessionManager? = null
-
 
     val mCastContextExecutor =
         CastContext.getSharedInstance(application, Executors.newSingleThreadExecutor())
@@ -95,8 +98,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             Log.d(TAG, "session starded ${p0.castDevice?.friendlyName}")
             mCastSession = p0
-
-
         }
 
         override fun onSessionStarting(p0: CastSession) {
@@ -144,7 +145,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         Log.d(TAG, "onCleared")
     }
-
 
     fun radioCast(radioStation: RadioStation, toast: () -> Unit) {
 

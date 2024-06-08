@@ -5,10 +5,10 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.view.Gravity
 import android.view.Menu
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -48,21 +48,19 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.content.ContextCompat.startActivity
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.google.android.gms.cast.framework.CastButtonFactory
-import com.wegrzyn.marcin.newaudiocast.MainViewModel.Companion.TAG
 
 class MainActivity : AppCompatActivity() {
+
+    private val vm: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        val viewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
         val composeView = findViewById<ComposeView>(R.id.compose_layout_id)
         composeView.setContent {
@@ -74,13 +72,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-
-    }
-
-    override fun onResume() {
-        super.onResume()
-        Log.d(TAG, "onResume: ")
-
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
