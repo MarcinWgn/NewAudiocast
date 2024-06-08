@@ -2,8 +2,10 @@
 androidx-junit = "1.1.5"
 espresso-core = "3.5.1"
 junit = "4.13.2"
-ksp ="1.9.21-1.0.15"
-kotlin="1.9.22"
+
+ksp ="2.0.0-1.0.21"
+kotlin="2.0.0"
+
 agp = "8.1.4"
 core-ktx = "1.13.1"
 activity-compose = "1.9.0"
@@ -23,7 +25,7 @@ mediarouter = "1.7.0"
 runtime-livedata = "1.6.7"
 ui-tooling = "1.6.7"
 
-kotlinCompilerExtensionVersion="1.5.8"
+
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core: core-ktx", version.ref = "core-ktx" }
@@ -54,3 +56,4 @@ androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = {id="com.android.library", version.ref = "agp"}
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 ksp ={id= "com.google.devtools.ksp", version.ref ="ksp"}
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
