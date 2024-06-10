@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
@@ -165,20 +166,20 @@ class MainActivity : AppCompatActivity() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            ImageRequest.Builder(LocalContext.current).data(data = station.img)
-                                .placeholder(R.drawable.baseline_radio_24)
-                                .decoderFactory(SvgDecoder.Factory())
-                                .crossfade(1000)
-                                .build()
-                        ),
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(data = station.img)
+                            .decoderFactory(SvgDecoder.Factory())
+                            .crossfade(1000)
+                            .build(),
+                        placeholder = painterResource(R.drawable.baseline_radio_24),
                         contentDescription = null,
                         modifier = Modifier
                             .size(80.dp)
                             .padding(8.dp)
                             .clip(CircleShape)
                     )
+
                     Icon(
                         painter = painterResource(id = R.drawable.round_playlist_play_24),
                         contentDescription = null,
@@ -188,11 +189,6 @@ class MainActivity : AppCompatActivity() {
                                 goPage(station.page, ctx)
                             }
                     )
-//                    Text(style = AppTypography.bodySmall, text = "Ramówka", modifier = Modifier
-//                        .padding(start = 8.dp, top = 16.dp, bottom = 16.dp, end = 8.dp)
-//                        .clickable {
-//                            goPage(station.page, ctx)
-//                        })
                 }
             }
         }
