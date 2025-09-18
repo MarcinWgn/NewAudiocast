@@ -17,22 +17,27 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,7 +45,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -68,13 +72,7 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             AppTheme {
-                Box(modifier = Modifier.safeDrawingPadding()) {
-                    when (LocalConfiguration.current.orientation) {
-                        Configuration.ORIENTATION_PORTRAIT -> PortraitView()
-                        Configuration.ORIENTATION_LANDSCAPE -> LandscapeView()
-                        else -> PortraitView()
-                    }
-                }
+                PortraitView()
             }
         }
     }
@@ -82,16 +80,18 @@ class MainActivity : AppCompatActivity() {
 
     @Composable
     fun PortraitView() {
-        Scaffold(
-            bottomBar = {
-                ControlBelt(modifier = Modifier)
-            }) {
+        Box(modifier = Modifier.fillMaxSize()) {
             CardsList(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .padding(bottom = it.calculateBottomPadding())
             )
-
+            Column(
+                verticalArrangement = Arrangement.Bottom,
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                ControlBelt(modifier = Modifier)
+                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+            }
         }
     }
 
@@ -101,34 +101,10 @@ class MainActivity : AppCompatActivity() {
         AndroidView(factory = { context ->
             val castButton = MediaRouteButton(context)
             CastButtonFactory.setUpMediaRouteButton(context, castButton)
-
             return@AndroidView castButton
         }, update = {
 
         })
-    }
-
-    @Composable
-    fun LandscapeView() {
-        ConstraintLayout {
-            val (list, belt) = createRefs()
-            CardsList(
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .constrainAs(list) {
-                        end.linkTo(parent.end)
-                        top.linkTo(parent.top)
-                        bottom.linkTo(parent.bottom)
-                    })
-            ControlBelt(
-                modifier = Modifier
-                    .fillMaxWidth(0.4f)
-                    .constrainAs(belt) {
-                        start.linkTo(parent.start)
-                        end.linkTo(list.start)
-                        bottom.linkTo(parent.bottom)
-                    })
-        }
     }
 
     @Composable
@@ -140,8 +116,16 @@ class MainActivity : AppCompatActivity() {
             columns = GridCells.Fixed(2),
             modifier = modifier
         ) {
+            item(span = {
+                GridItemSpan(maxLineSpan)
+            }) {
+                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            }
             items(Stations.stationsList) { item ->
                 RadioCard(station = item)
+            }
+            item {
+                Spacer(Modifier.height(84.dp))
             }
         }
     }
@@ -149,10 +133,8 @@ class MainActivity : AppCompatActivity() {
     @Composable
     fun RadioCard(station: RadioStation, model: MainViewModel = viewModel()) {
         val ctx = LocalContext.current
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(Color.Transparent),
-            border = CardDefaults.outlinedCardBorder(true)
+        OutlinedCard(
+//            shape = RoundedCornerShape(20.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -219,17 +201,16 @@ class MainActivity : AppCompatActivity() {
         val isShowing by model.beltIsShowing.observeAsState(false)
         val castDevName by model.castDevName.observeAsState("")
 
-
-        Card(
+        OutlinedCard(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(Color.Transparent),
-            border = CardDefaults.outlinedCardBorder(true)
+                .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
         ) {
 
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 if (isShowing) Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(
                         painter = rememberAsyncImagePainter(
@@ -273,7 +254,9 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(end = 16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 16.dp),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
