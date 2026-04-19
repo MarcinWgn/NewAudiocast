@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -37,6 +38,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -125,7 +127,7 @@ class MainActivity : AppCompatActivity() {
                 RadioCard(station = item)
             }
             item {
-                Spacer(Modifier.height(84.dp))
+                Spacer(Modifier.height(100.dp))
             }
         }
     }
@@ -204,12 +206,14 @@ class MainActivity : AppCompatActivity() {
         OutlinedCard(
             modifier = modifier
                 .fillMaxWidth()
+                .height(80.dp)
                 .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
         ) {
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 if (isShowing) Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(
@@ -227,31 +231,39 @@ class MainActivity : AppCompatActivity() {
                             .clip(CircleShape)
                             .padding(start = 16.dp)
                     )
-                    Column(modifier = Modifier.padding(start = 24.dp, end = 50.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .padding(start = 24.dp, end = 24.dp)
+                            .width(120.dp)
+                    ) {
                         Text(style = AppTypography.titleLarge, modifier = Modifier, text = name)
                         Text(style = AppTypography.titleSmall, text = castDevName)
                     }
-                    IconButton(
-                        onClick = { model.playPause() }, modifier = Modifier.padding(start = 16.dp)
-                    ) {
-                        if (value == MainViewModel.PLAYING || value == MainViewModel.PAUSE) {
-                            Icon(
-                                imageVector =
-                                    when (value) {
-                                        MainViewModel.PLAYING -> ImageVector.vectorResource(id = R.drawable.pause_24)
-                                        MainViewModel.PAUSE -> ImageVector.vectorResource(id = R.drawable.play_24)
-                                        else -> ImageVector.vectorResource(id = R.drawable.play_24)
-                                    }, contentDescription = null, modifier = Modifier
-                                    .padding(8.dp)
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                            )
+                    Box(modifier = Modifier.size(80.dp), contentAlignment = Alignment.Center) {
+                        IconButton(
+                            onClick = { model.playPause() },
+                            modifier = Modifier.padding()
+                        ) {
+                            if (value == MainViewModel.PLAYING || value == MainViewModel.PAUSE) {
+                                Icon(
+                                    imageVector =
+                                        when (value) {
+                                            MainViewModel.PLAYING -> ImageVector.vectorResource(id = R.drawable.pause_24)
+                                            MainViewModel.PAUSE -> ImageVector.vectorResource(id = R.drawable.play_24)
+                                            else -> ImageVector.vectorResource(id = R.drawable.play_24)
+                                        }, contentDescription = null, modifier = Modifier
+                                        .size(40.dp)
+                                        .padding(8.dp)
+                                        .clip(CircleShape)
+                                )
+                            }
+                        }
+                        if (value == MainViewModel.BUFFERING) {
+                        CircularProgressIndicator()
                         }
                     }
 
-                    if (value == MainViewModel.BUFFERING) {
-                        CircularProgressIndicator()
-                    }
+
                 }
                 Row(
                     modifier = Modifier
