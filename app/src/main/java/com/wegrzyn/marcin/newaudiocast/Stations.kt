@@ -77,15 +77,15 @@ class Stations {
             ),
             RadioStation(
                 name = "BBC1",
-                "https://lsn.lv/bbcradio.m3u8?station=bbc_radio_one&bitrate=320000",
-                "https://sounds.files.bbci.co.uk/3.9.4/networks/bbc_radio_one/colour_default.svg",
-                "https://www.bbc.co.uk/schedules/p00fzl86"
+                uri = "https://lsn.lv/bbcradio.m3u8?station=bbc_radio_one&bitrate=320000",
+                img = "https://sounds.files.bbci.co.uk/3.9.4/networks/bbc_radio_one/colour_default.svg",
+                page = "https://www.bbc.co.uk/schedules/p00fzl86"
             ),
             RadioStation(
                 name = "BBC4",
-                "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_fourfm&bitrate=96000",
-                "https://ichef.bbci.co.uk/images/ic/raw/p0kp26p1.png.webp",
-                "https://www.bbc.co.uk/schedules/p00fzl7j"
+                uri = "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_fourfm&bitrate=96000",
+                img = "https://ichef.bbci.co.uk/images/ic/raw/p0kp26p1.png.webp",
+                page = "https://www.bbc.co.uk/schedules/p00fzl7j"
             )
 
         )
