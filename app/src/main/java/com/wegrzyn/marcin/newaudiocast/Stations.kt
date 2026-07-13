@@ -6,7 +6,7 @@ class Stations {
             RadioStation(
                 "Nowy Swiat",
                 "https://stream.nowyswiat.online/mp3",
-                "https://nowyswiat.online/wp-content/uploads/2020/09/fala-690x690.png",
+                "https://nowyswiat.online/assets/images/cover-default.png",
                 "https://nowyswiat.online/ramowka/"
             ),
             RadioStation(
