@@ -4,26 +4,30 @@ espresso-core = "3.7.0"
 junit = "4.13.2"
 
 ksp = "2.3.2"
-kotlin = "2.3.20"
-
-agp = "9.1.1"
+kotlin = "2.4.0"
+agp = "9.2.1"
 core-ktx = "1.13.1"
 activity-compose = "1.13.0"
-animation = "1.10.6"
+animation = "1.11.4"
 appcompat = "1.7.1"
 coil-svg = "2.7.0"
 coil-compose = "2.7.0"
 constraintlayout = "2.2.1"
 constraintlayout-compose = "1.1.1"
 fragment-ktx = "1.8.9"
-google-material = "1.13.0"
-lifecycle-viewmodel-ktx = "2.10.0"
-material = "1.10.6"
+google-material = "1.14.0"
+lifecycle-viewmodel-ktx = "2.11.0"
+material = "1.11.4"
 material3 = "1.4.0"
 play-services-cast-framework = "22.3.1"
 mediarouter = "1.8.1"
-runtime-livedata = "1.10.6"
-ui-tooling = "1.10.6"
+runtime-livedata = "1.11.4"
+ui-tooling = "1.11.4"
+uiautomator = "2.4.0"
+benchmark-macro-junit4 = "1.4.1"
+android-built-in1-kotlin = "9.2.1"
+baselineprofile = "1.4.1"
+profileinstaller = "1.4.1"
 
 
 
@@ -50,6 +54,9 @@ junit = { module = "junit:junit", version.ref = "junit" }
 material = { module = "com.google.android.material:material", version.ref = "google-material" }
 play-services-cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "play-services-cast-framework" }
 androidx-mediarouter = { module = "androidx.mediarouter:mediarouter", version.ref = "mediarouter" }
+androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
+androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmark-macro-junit4" }
+androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -57,3 +64,6 @@ androidLibrary = { id = "com.android.library", version.ref = "agp" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+android-built-in1-kotlin = { id = "com.android.built-in-kotlin", version.ref = "android-built-in1-kotlin" }
+baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }

@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "NewAudiocast"
 include (":app")
+include(":baselineprofile")

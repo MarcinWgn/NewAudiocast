@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -59,6 +60,7 @@ dependencies {
     implementation (libs.androidx.fragment.ktx)
     implementation (libs.androidx.constraintlayout)
     implementation (libs.androidx.mediarouter)
+    implementation libs.androidx.profileinstaller
     implementation (libs.play.services.cast.framework)
 
     implementation (libs.androidx.activity.compose)
@@ -81,4 +83,5 @@ dependencies {
     testImplementation (libs.junit)
     androidTestImplementation (libs.androidx.junit)
     androidTestImplementation (libs.androidx.espresso.core)
+    baselineProfile project(':baselineprofile')
 }
