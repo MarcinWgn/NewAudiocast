@@ -37,6 +37,15 @@ private val LightThemeColors = lightColorScheme(
 	inverseOnSurface = md_theme_light_inverseOnSurface,
 	inverseSurface = md_theme_light_inverseSurface,
 	inversePrimary = md_theme_light_inversePrimary,
+	outlineVariant = md_theme_light_outlineVariant,
+	surfaceDim = md_theme_light_surfaceDim,
+	surfaceBright = md_theme_light_surfaceBright,
+	surfaceContainerLowest = md_theme_light_surfaceContainerLowest,
+	surfaceContainerLow = md_theme_light_surfaceContainerLow,
+	surfaceContainer = md_theme_light_surfaceContainer,
+	surfaceContainerHigh = md_theme_light_surfaceContainerHigh,
+	surfaceContainerHighest = md_theme_light_surfaceContainerHighest,
+	surfaceTint = md_theme_light_primary,
 )
 private val DarkThemeColors = darkColorScheme(
 
@@ -66,6 +75,15 @@ private val DarkThemeColors = darkColorScheme(
 	inverseOnSurface = md_theme_dark_inverseOnSurface,
 	inverseSurface = md_theme_dark_inverseSurface,
 	inversePrimary = md_theme_dark_inversePrimary,
+	outlineVariant = md_theme_dark_outlineVariant,
+	surfaceDim = md_theme_dark_surfaceDim,
+	surfaceBright = md_theme_dark_surfaceBright,
+	surfaceContainerLowest = md_theme_dark_surfaceContainerLowest,
+	surfaceContainerLow = md_theme_dark_surfaceContainerLow,
+	surfaceContainer = md_theme_dark_surfaceContainer,
+	surfaceContainerHigh = md_theme_dark_surfaceContainerHigh,
+	surfaceContainerHighest = md_theme_dark_surfaceContainerHighest,
+	surfaceTint = md_theme_dark_primary,
 )
 @Composable
 fun AppTheme(

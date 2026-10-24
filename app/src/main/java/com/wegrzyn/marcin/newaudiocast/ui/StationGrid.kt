@@ -2,6 +2,7 @@ package com.wegrzyn.marcin.newaudiocast
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
@@ -47,7 +49,12 @@ fun StationGrid(
         contentPadding = PaddingValues(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        columns = GridCells.Adaptive(minSize = 170.dp),
+        // Always 2 columns in portrait; landscape fits as many as the width allows.
+        columns = if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
+            GridCells.Fixed(2)
+        } else {
+            GridCells.Adaptive(minSize = 170.dp)
+        },
         modifier = modifier
     ) {
         items(stations) { item ->
