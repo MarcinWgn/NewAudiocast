@@ -2,12 +2,14 @@ package com.wegrzyn.marcin.newaudiocast
 
 import android.app.Application
 import android.content.Context
+import android.os.SystemClock
 import android.net.Uri
 import android.util.Log
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.mediarouter.media.MediaRouteSelector
 import com.google.android.gms.cast.Cast
+import com.google.android.gms.cast.CastStatusCodes
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
@@ -17,10 +19,14 @@ import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManager
 import com.google.android.gms.cast.framework.SessionManagerListener
 import com.google.android.gms.cast.framework.media.RemoteMediaClient
+import com.google.android.gms.common.api.CommonStatusCodes
 import com.google.android.gms.common.images.WebImage
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import java.util.concurrent.Executors
 
@@ -40,6 +46,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             MediaStatus.IDLE_REASON_CANCELED,
             MediaStatus.IDLE_REASON_ERROR
         )
+
+        // Load results caused by the user switching stations, not by a broken stream.
+        private val IGNORED_LOAD_CODES = setOf(
+            CastStatusCodes.REPLACED,
+            CastStatusCodes.CANCELED,
+            CommonStatusCodes.INTERRUPTED
+        )
+
+        private const val ERROR_DEDUP_MS = 3_000L
     }
 
     private var remoteMediaClient: RemoteMediaClient? = null
@@ -68,6 +83,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     )
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<PlayerEvent>(Channel.BUFFERED)
+    val events: Flow<PlayerEvent> = _events.receiveAsFlow()
+
+    private var lastErrorAt = 0L
 
 
     private var mCastSession: CastSession? = null
@@ -240,6 +260,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         client.load(mediaLoadRequestData).setResultCallback {
             Log.d(TAG, "wynik data: ${it.mediaError?.type}")
             Log.d(TAG, "wynik error: ${it.mediaError?.detailedErrorCode}")
+            if (!it.status.isSuccess && it.status.statusCode !in IGNORED_LOAD_CODES) {
+                reportPlaybackFailed(radioStation.name)
+            }
         }
 
         prefs.edit { putString(KEY_LAST_STATION, radioStation.name) }
@@ -251,6 +274,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (remoteMediaClient.playerState == MediaStatus.PLAYER_STATE_IDLE &&
             remoteMediaClient.idleReason in STOPPED_IDLE_REASONS
         ) {
+            val previous = _uiState.value
+            if (remoteMediaClient.idleReason == MediaStatus.IDLE_REASON_ERROR &&
+                previous.status != PlaybackStatus.IDLE
+            ) {
+                reportPlaybackFailed(previous.stationName)
+            }
             _uiState.update { it.copy(status = PlaybackStatus.IDLE, isBeltShowing = false) }
             return
         }
@@ -281,6 +310,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             client.isPlaying -> client.pause()
 
         }
+    }
+
+    // A failed load can be reported both by the load result and the idle status; show it once.
+    private fun reportPlaybackFailed(stationName: String) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastErrorAt < ERROR_DEDUP_MS) return
+        lastErrorAt = now
+        _events.trySend(PlayerEvent.PlaybackFailed(stationName))
     }
 
     fun stop() {

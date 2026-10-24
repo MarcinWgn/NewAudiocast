@@ -29,16 +29,18 @@ Unit/instrumented tests are only the template examples; there is no real test co
 - Mixed Gradle DSLs: root `build.gradle.kts` / `settings.gradle.kts` and `baselineprofile/build.gradle.kts` are Kotlin DSL, but `app/build.gradle` is **Groovy**. Match the syntax of the file being edited.
 - All dependency/plugin versions live in `gradle/libs.versions.toml` (version catalog).
 - `:app` uses Java/JVM 17; `:baselineprofile` uses Java 11. compile/target SDK 37, minSdk 24.
+- Release builds use R8 (`minifyEnabled`, `shrinkResources`). Classes referenced only by name (e.g. `CastOptionsProvider` from manifest `<meta-data>`) need a `-keep` rule in `app/proguard-rules.pro`.
 - Generated baseline profiles are written to `app/src/release/generated/baselineProfiles/`.
 
 ## Architecture
 
 All app code is in `app/src/main/java/com/wegrzyn/marcin/newaudiocast/`:
 
-- **Cast wiring**: `CastOptionsProvider` is registered via `<meta-data>` in `AndroidManifest.xml` and configures the Cast framework to use the **Default Media Receiver** (no custom receiver app). `MyApplication` only applies Material dynamic colors.
+- **Cast wiring**: `CastOptionsProvider` is registered via `<meta-data>` in `AndroidManifest.xml` and configures the Cast framework to use the **Default Media Receiver** (no custom receiver app), with the Cast media session/notification enabled (lock-screen and system media controls). `MyApplication` only applies Material dynamic colors.
 - **`MainViewModel`** (AndroidViewModel) owns all Cast state and exposes it as a single `StateFlow<PlayerUiState>` (`PlayerUiState.kt`, with `PlaybackStatus` enum). It obtains `CastContext` asynchronously and registers a `SessionManagerListener<CastSession>`. `attachSession()`/`detachSession()` are the single place where the `RemoteMediaClient.Callback` (playback status) and `Cast.Listener` (device volume) are registered/unregistered — keep it that way to avoid duplicate callbacks.
   - `radioCast()` loads a `MediaInfo` (`STREAM_TYPE_LIVE`, the station's `contentType`, name + image metadata). Without a session it stores the station as `pendingStation` and calls `onNoSession`; the station is played in `onSessionStarted`, and cleared if the device chooser is cancelled or the session fails to start.
   - The last played station is persisted in SharedPreferences (`player` / `last_station`) and shown as a quick-play button when connected but idle.
+  - One-off UI events (e.g. `PlayerEvent.PlaybackFailed`, from a failed load or an `IDLE_REASON_ERROR` transition) go through the `events` Channel and are shown as a snackbar.
   - Volume/mute use the device volume (`CastSession.volume` / `isMute`); `MainActivity.dispatchKeyEvent` maps hardware volume keys to it while casting.
 - **`MainActivity`** contains all Compose UI as member composables: a pinned 48dp `TopAppBar` holding the Cast button (`MediaRouteButton` via `AndroidView`), a 2-column `LazyVerticalGrid` of `RadioCard`s, and a bottom `ControlBelt` overlay that is only visible when playing (`PlayerRow` + `VolumeRow`) or connected (`ConnectedRow`). The belt's measured height sizes the list's last spacer item so cards aren't hidden behind it. Tapping a station without a session opens `MediaRouteChooserDialog`. Station logos are loaded with Coil (including `SvgDecoder`).
 - **Stations**: the station list is hardcoded in `Stations.stationsList` (`RadioStation(name, uri, img, page, contentType)`; `contentType` defaults to MP3, use `RadioStation.AAC`/`HLS` where needed). The stream URL must be directly playable by the Default Media Receiver.

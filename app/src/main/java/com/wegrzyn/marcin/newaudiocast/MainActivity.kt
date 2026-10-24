@@ -47,10 +47,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,7 +74,6 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -88,6 +90,7 @@ class MainActivity : AppCompatActivity() {
     private val vm: MainViewModel by viewModels()
 
     companion object {
+
         private const val VOLUME_STEP = 0.05f
     }
 
@@ -142,6 +145,17 @@ class MainActivity : AppCompatActivity() {
         var beltHeight by remember { mutableStateOf(0.dp) }
         // Bar stays put; its color changes once the list scrolls under it.
         val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+        val snackbarHostState = remember { SnackbarHostState() }
+
+        LaunchedEffect(Unit) {
+            vm.events.collect { event ->
+                when (event) {
+                    is PlayerEvent.PlaybackFailed -> snackbarHostState.showSnackbar(
+                        getString(R.string.playback_failed, event.stationName)
+                    )
+                }
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -168,6 +182,7 @@ class MainActivity : AppCompatActivity() {
                     verticalArrangement = Arrangement.Bottom,
                     modifier = Modifier.fillMaxHeight()
                 ) {
+                    SnackbarHost(hostState = snackbarHostState)
                     ControlBelt(modifier = Modifier.onSizeChanged {
                         beltHeight = with(density) { it.height.toDp() }
                     })

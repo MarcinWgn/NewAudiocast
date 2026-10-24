@@ -5,4 +5,5 @@
     <string name="mute">Wycisz</string>
     <string name="unmute">Włącz dźwięk</string>
     <string name="connected_to">Połączono z</string>
+    <string name="playback_failed">Nie udało się odtworzyć: %1$s</string>
 </resources>

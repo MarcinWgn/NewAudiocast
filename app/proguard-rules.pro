@@ -19,3 +19,5 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# Referenced only by name from the manifest <meta-data>, so R8 can't see it's used.
+-keep class com.wegrzyn.marcin.newaudiocast.CastOptionsProvider { *; }

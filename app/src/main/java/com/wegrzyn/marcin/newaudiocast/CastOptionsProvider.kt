@@ -21,7 +21,7 @@ class CastOptionsProvider : OptionsProvider {
 
         val castMediaOptions = CastMediaOptions.Builder()
             .setNotificationOptions(notificationOptions)
-            .setMediaSessionEnabled(false)
+            .setMediaSessionEnabled(true)
             .build()
         val launchOptions = LaunchOptions.Builder()
             .build()

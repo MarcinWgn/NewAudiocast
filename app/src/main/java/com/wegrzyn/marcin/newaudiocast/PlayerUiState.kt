@@ -15,3 +15,7 @@ data class PlayerUiState(
     val isConnected: Boolean = false,
     val lastStation: RadioStation? = null
 )
+
+sealed interface PlayerEvent {
+    data class PlaybackFailed(val stationName: String) : PlayerEvent
+}
