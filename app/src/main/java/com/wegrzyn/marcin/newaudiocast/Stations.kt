@@ -37,7 +37,8 @@ class Stations {
                 "Manx",
                 "https://listen-manxradio.sharp-stream.com/manxradiofmmobile.aac?",
                 "https://mmo.aiircdn.com/61/60b78be49f831.png",
-                "https://www.manxradio.com/on-air/schedule/fm/"
+                "https://www.manxradio.com/on-air/schedule/fm/",
+                RadioStation.AAC
             ),
             RadioStation(
                 "Trójka",
@@ -49,7 +50,8 @@ class Stations {
                 "Antyradio",
                 "https://27863.live.streamtheworld.com/ANTYRADIOAAC.aac?",
                 "https://gfx.antyradio.pl/design/antyradio/src/images/logo.png",
-                "https://www.antyradio.pl/radio/Ramowka"
+                "https://www.antyradio.pl/radio/Ramowka",
+                RadioStation.AAC
             ),
             RadioStation(
                 "Eska Rock",
@@ -79,13 +81,15 @@ class Stations {
                 name = "BBC1",
                 uri = "https://lsn.lv/bbcradio.m3u8?station=bbc_radio_one&bitrate=320000",
                 img = "https://sounds.files.bbci.co.uk/3.9.4/networks/bbc_radio_one/colour_default.svg",
-                page = "https://www.bbc.co.uk/schedules/p00fzl86"
+                page = "https://www.bbc.co.uk/schedules/p00fzl86",
+                contentType = RadioStation.HLS
             ),
             RadioStation(
                 name = "BBC4",
                 uri = "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_fourfm&bitrate=96000",
                 img = "https://ichef.bbci.co.uk/images/ic/raw/p0kp26p1.png.webp",
-                page = "https://www.bbc.co.uk/schedules/p00fzl7j"
+                page = "https://www.bbc.co.uk/schedules/p00fzl7j",
+                contentType = RadioStation.HLS
             )
 
         )

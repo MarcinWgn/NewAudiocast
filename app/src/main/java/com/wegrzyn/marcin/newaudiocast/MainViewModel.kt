@@ -1,20 +1,27 @@
 package com.wegrzyn.marcin.newaudiocast
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.mediarouter.media.MediaRouteSelector
+import com.google.android.gms.cast.Cast
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
+import com.google.android.gms.cast.MediaStatus
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManager
 import com.google.android.gms.cast.framework.SessionManagerListener
 import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.google.android.gms.common.images.WebImage
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.util.concurrent.Executors
 
 
@@ -25,31 +32,53 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     companion object {
         val TAG = "TAGTEST"
 
-        const val PLAYING = 1
-        const val PAUSE = 2
-        const val BUFFERING = 3
+        private const val PREFS_NAME = "player"
+        private const val KEY_LAST_STATION = "last_station"
+
+        private val STOPPED_IDLE_REASONS = setOf(
+            MediaStatus.IDLE_REASON_FINISHED,
+            MediaStatus.IDLE_REASON_CANCELED,
+            MediaStatus.IDLE_REASON_ERROR
+        )
     }
 
-    lateinit var remoteMediaClient: RemoteMediaClient
+    private var remoteMediaClient: RemoteMediaClient? = null
 
-    private val _stateLiveData = MutableLiveData<Int>()
-    val stateLiveData: LiveData<Int> = _stateLiveData
+    private val mediaCallback = object : RemoteMediaClient.Callback() {
+        override fun onStatusUpdated() {
+            remoteMediaClient?.let { checkState(it) }
+        }
+    }
 
-    private val _stNameLiveData = MutableLiveData(" ")
-    val stNameLiveData: LiveData<String> = _stNameLiveData
+    private val castListener = object : Cast.Listener() {
+        override fun onVolumeChanged() {
+            updateVolume()
+        }
+    }
 
-    private val _imgUrlLivedata = MutableLiveData<Uri>()
-    val imgLiveData: LiveData<Uri> = _imgUrlLivedata
+    val isCasting: Boolean
+        get() = mCastSession?.isConnected == true
 
-    private val _beltIsShowing = MutableLiveData<Boolean>(false)
-    val beltIsShowing = _beltIsShowing
+    private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    private val _castDevName = MutableLiveData<String>("")
-    val castDevName: LiveData<String> = _castDevName
+    private val _uiState = MutableStateFlow(
+        PlayerUiState(
+            lastStation = prefs.getString(KEY_LAST_STATION, null)
+                ?.let { name -> Stations.stationsList.find { it.name == name } }
+        )
+    )
+    val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
 
     private var mCastSession: CastSession? = null
     private var mSessionManager: SessionManager? = null
+    private var castContext: CastContext? = null
+
+    // Station picked before any Cast device was connected; played once a session starts.
+    private var pendingStation: RadioStation? = null
+
+    val routeSelector: MediaRouteSelector?
+        get() = castContext?.mergedSelector
 
     val mCastContextExecutor =
         CastContext.getSharedInstance(application, Executors.newSingleThreadExecutor())
@@ -60,8 +89,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     inner class SessionManagerListenerImpl : SessionManagerListener<CastSession> {
         override fun onSessionEnded(p0: CastSession, p1: Int) {
             Log.d(TAG, "session ended")
-            _beltIsShowing.postValue(false)
+            markDisconnected()
             p0.remoteMediaClient?.stop()
+            detachSession()
         }
 
         override fun onSessionEnding(p0: CastSession) {
@@ -71,12 +101,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         override fun onSessionResumeFailed(p0: CastSession, p1: Int) {
             Log.d(TAG, "session resume ${p0.castDevice?.friendlyName}")
 
-            _beltIsShowing.postValue(false)
+            markDisconnected()
         }
 
         override fun onSessionResumed(p0: CastSession, p1: Boolean) {
             Log.d(TAG, "session resumed ${p0.castDevice?.friendlyName} ${p0.applicationMetadata.toString()}")
-            mCastSession = p0
+            attachSession(p0)
         }
 
         override fun onSessionResuming(p0: CastSession, p1: String) {
@@ -85,15 +115,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         override fun onSessionStartFailed(p0: CastSession, p1: Int) {
             Log.d(TAG, "session start failed ${p0.castDevice?.friendlyName}")
+            pendingStation = null
 
-            _beltIsShowing.postValue(false)
+            markDisconnected()
         }
 
 
         override fun onSessionStarted(p0: CastSession, p1: String) {
 
-            Log.d(TAG, "session starded ${p0.castDevice?.friendlyName}")
-            mCastSession = p0
+            Log.d(TAG, "session started ${p0.castDevice?.friendlyName}")
+            attachSession(p0)
+            pendingStation?.let { station ->
+                pendingStation = null
+                p0.remoteMediaClient?.let { loadStation(it, station) }
+            }
         }
 
         override fun onSessionStarting(p0: CastSession) {
@@ -102,7 +137,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         override fun onSessionSuspended(p0: CastSession, p1: Int) {
             Log.d(TAG, "session suspended ${p0.castDevice?.friendlyName}")
-            _beltIsShowing.postValue(false)
+            markDisconnected()
         }
 
     }
@@ -111,13 +146,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         mCastContextExecutor
             .addOnSuccessListener { castContext ->
 
+                this.castContext = castContext
                 mSessionManager = castContext.sessionManager
-                mCastSession = mSessionManager!!.currentCastSession
-
-                mCastSession?.let {
-                    remoteMediaClient = it.remoteMediaClient!!
-                    checkState(remoteMediaClient)
-                }
+                mSessionManager?.currentCastSession?.let { attachSession(it) }
                 mSessionManager?.addSessionManagerListener(
                     mSessionManagerListener,
                     CastSession::class.java
@@ -137,86 +168,158 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             mSessionManagerListener,
             CastSession::class.java
         )
-        mCastSession = null
+        detachSession()
 
         Log.d(TAG, "onCleared")
     }
 
-    fun radioCast(radioStation: RadioStation, toast: () -> Unit) {
+    private fun attachSession(session: CastSession) {
+        if (session !== mCastSession) {
+            mCastSession?.removeCastListener(castListener)
+            session.addCastListener(castListener)
+            mCastSession = session
+        }
+        _uiState.update {
+            it.copy(isConnected = true, castDeviceName = session.castDevice?.friendlyName ?: "")
+        }
+        updateVolume()
+        val client = session.remoteMediaClient ?: return
+        if (client !== remoteMediaClient) {
+            remoteMediaClient?.unregisterCallback(mediaCallback)
+            client.registerCallback(mediaCallback)
+            remoteMediaClient = client
+        }
+        checkState(client)
+    }
 
+    private fun markDisconnected() {
+        _uiState.update { it.copy(isBeltShowing = false, isConnected = false) }
+    }
+
+    private fun detachSession() {
+        mCastSession?.removeCastListener(castListener)
+        remoteMediaClient?.unregisterCallback(mediaCallback)
+        remoteMediaClient = null
+        mCastSession = null
+    }
+
+    /** Casts [radioStation], or remembers it and calls [onNoSession] so the UI can offer a device. */
+    fun radioCast(radioStation: RadioStation, onNoSession: () -> Unit) {
+        val session = mCastSession
+        val client = session?.remoteMediaClient
+        if (client != null) {
+            attachSession(session)
+            loadStation(client, radioStation)
+        } else {
+            Log.d(TAG, "remote media client is null")
+            pendingStation = radioStation
+            onNoSession()
+        }
+    }
+
+    fun clearPendingStation() {
+        pendingStation = null
+    }
+
+    private fun loadStation(client: RemoteMediaClient, radioStation: RadioStation) {
         val mediaMetaData = MediaMetadata(MediaMetadata.MEDIA_TYPE_GENERIC)
         mediaMetaData.putString(MediaMetadata.KEY_TITLE, radioStation.name)
         mediaMetaData.addImage(WebImage(Uri.parse(radioStation.img)))
 
         val mediaInfo = MediaInfo.Builder(radioStation.uri)
             .setStreamType(MediaInfo.STREAM_TYPE_LIVE)
-            .setContentType("audio/mpeg")
+            .setContentType(radioStation.contentType)
             .setMetadata(mediaMetaData)
             .build()
 
         val mediaLoadRequestData = MediaLoadRequestData.Builder()
             .setMediaInfo(mediaInfo)
-            .setAutoplay(false)
+            .setAutoplay(true)
             .build()
 
-        if (mCastSession != null && mCastSession!!.remoteMediaClient != null) {
-            Log.d(TAG, "remote media client is not null")
-
-            remoteMediaClient = mCastSession?.remoteMediaClient!!
-
-            val waitToResult = remoteMediaClient.load(mediaLoadRequestData)
-
-            waitToResult.addStatusListener {
-                remoteMediaClient.play()
-            }
-            waitToResult.setResultCallback {
-                Log.d(TAG, "wynik data: ${it.mediaError?.type}")
-                Log.d(TAG, "wynik error: ${it.mediaError?.detailedErrorCode}")
-            }
-            remoteMediaClient.registerCallback(object : RemoteMediaClient.Callback() {
-                override fun onStatusUpdated() {
-                    super.onStatusUpdated()
-                    checkState(remoteMediaClient)
-                }
-            })
-        } else {
-            Log.d(TAG, "remote media client is null")
-            toast()
+        client.load(mediaLoadRequestData).setResultCallback {
+            Log.d(TAG, "wynik data: ${it.mediaError?.type}")
+            Log.d(TAG, "wynik error: ${it.mediaError?.detailedErrorCode}")
         }
+
+        prefs.edit { putString(KEY_LAST_STATION, radioStation.name) }
+        _uiState.update { it.copy(lastStation = radioStation) }
     }
 
-    fun checkState(remoteMediaClient: RemoteMediaClient) {
+    private fun checkState(remoteMediaClient: RemoteMediaClient) {
 
-        when {
-            remoteMediaClient.isPlaying -> {
-                _stateLiveData.postValue(PLAYING)
-                _beltIsShowing.postValue(true)
-            }
-
-            remoteMediaClient.isPaused -> {
-                _stateLiveData.postValue(PAUSE)
-                _beltIsShowing.postValue(true)
-            }
-
-            remoteMediaClient.isBuffering -> {
-                _stateLiveData.postValue(BUFFERING)
-                _beltIsShowing.postValue(true)
-            }
+        if (remoteMediaClient.playerState == MediaStatus.PLAYER_STATE_IDLE &&
+            remoteMediaClient.idleReason in STOPPED_IDLE_REASONS
+        ) {
+            _uiState.update { it.copy(status = PlaybackStatus.IDLE, isBeltShowing = false) }
+            return
         }
-        val stName = remoteMediaClient.mediaInfo?.metadata?.getString(MediaMetadata.KEY_TITLE)
-        _stNameLiveData.postValue(stName!!)
-        if (remoteMediaClient.mediaInfo?.metadata!!.hasImages()) {
-            val imgUri = remoteMediaClient.mediaInfo?.metadata?.images?.get(0)?.url
-            _imgUrlLivedata.postValue(imgUri!!)
+
+        val status = when {
+            remoteMediaClient.isPlaying -> PlaybackStatus.PLAYING
+            remoteMediaClient.isPaused -> PlaybackStatus.PAUSED
+            remoteMediaClient.isBuffering -> PlaybackStatus.BUFFERING
+            else -> null
         }
-        _castDevName.postValue(mCastSession?.castDevice?.friendlyName ?: "")
+        val metadata = remoteMediaClient.mediaInfo?.metadata
+
+        _uiState.update { state ->
+            state.copy(
+                status = status ?: state.status,
+                isBeltShowing = status != null || state.isBeltShowing,
+                castDeviceName = mCastSession?.castDevice?.friendlyName ?: "",
+                stationName = metadata?.getString(MediaMetadata.KEY_TITLE) ?: state.stationName,
+                imageUri = metadata?.images?.firstOrNull()?.url ?: state.imageUri
+            )
+        }
     }
 
     fun playPause() {
+        val client = remoteMediaClient ?: return
         when {
-            remoteMediaClient.isPaused -> remoteMediaClient.play()
-            remoteMediaClient.isPlaying -> remoteMediaClient.pause()
+            client.isPaused -> client.play()
+            client.isPlaying -> client.pause()
 
+        }
+    }
+
+    fun stop() {
+        remoteMediaClient?.stop()
+    }
+
+    fun setVolume(volume: Float) {
+        val session = mCastSession ?: return
+        val value = volume.coerceIn(0f, 1f)
+        try {
+            session.volume = value.toDouble()
+            _uiState.update { it.copy(volume = value) }
+        } catch (e: Exception) {
+            Log.d(TAG, "set volume failed: $e")
+        }
+    }
+
+    fun adjustVolume(delta: Float) {
+        setVolume(_uiState.value.volume + delta)
+    }
+
+    fun toggleMute() {
+        val session = mCastSession ?: return
+        try {
+            session.isMute = !_uiState.value.isMuted
+            _uiState.update { it.copy(isMuted = !it.isMuted) }
+        } catch (e: Exception) {
+            Log.d(TAG, "set mute failed: $e")
+        }
+    }
+
+    private fun updateVolume() {
+        val session = mCastSession ?: return
+        try {
+            _uiState.update {
+                it.copy(volume = session.volume.toFloat(), isMuted = session.isMute)
+            }
+        } catch (e: IllegalStateException) {
+            Log.d(TAG, "read volume failed: $e")
         }
     }
 }

@@ -5,11 +5,17 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.Gravity
+import android.view.KeyEvent
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,39 +31,52 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.mediarouter.app.MediaRouteButton
+import androidx.mediarouter.app.MediaRouteChooserDialog
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.SvgDecoder
@@ -67,6 +86,10 @@ import com.google.android.gms.cast.framework.CastButtonFactory
 class MainActivity : AppCompatActivity() {
 
     private val vm: MainViewModel by viewModels()
+
+    companion object {
+        private const val VOLUME_STEP = 0.05f
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -80,24 +103,80 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    // Opens the Cast device picker; falls back to a toast when Cast is unavailable.
+    private fun showDeviceChooser() {
+        val selector = vm.routeSelector
+        if (selector == null) {
+            val tst = Toast.makeText(
+                this,
+                "Moja Kochana Jadziu CASTUJ :)",
+                Toast.LENGTH_SHORT
+            )
+            tst.setGravity(Gravity.CENTER, 0, 0)
+            tst.show()
+            return
+        }
+        MediaRouteChooserDialog(this).apply {
+            routeSelector = selector
+            // Cancel = closed without picking a device; picking one only dismisses.
+            setOnCancelListener { vm.clearPendingStation() }
+        }.show()
+    }
+
+    // Hardware volume keys control the Cast device while a session is connected.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val delta = when (event.keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> VOLUME_STEP
+            KeyEvent.KEYCODE_VOLUME_DOWN -> -VOLUME_STEP
+            else -> return super.dispatchKeyEvent(event)
+        }
+        if (!vm.isCasting) return super.dispatchKeyEvent(event)
+        if (event.action == KeyEvent.ACTION_DOWN) vm.adjustVolume(delta)
+        return true
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun PortraitView() {
-        Box(modifier = Modifier.fillMaxSize()) {
-            CardsList(
-                modifier = Modifier
-                    .fillMaxHeight()
+        val density = LocalDensity.current
+        var beltHeight by remember { mutableStateOf(0.dp) }
+        // Bar stays put; its color changes once the list scrolls under it.
+        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+        ) {
+            TopAppBar(
+                title = { Text(stringResource(R.string.app_name)) },
+                scrollBehavior = scrollBehavior,
+                expandedHeight = 48.dp,
+                actions = {
+                    Box(modifier = Modifier.padding(end = 8.dp)) {
+                        CastButtonXmlView()
+                    }
+                }
             )
-            Column(
-                verticalArrangement = Arrangement.Bottom,
-                modifier = Modifier.fillMaxHeight()
-            ) {
-                ControlBelt(modifier = Modifier)
-                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+            Box(modifier = Modifier.weight(1f)) {
+                CardsList(
+                    bottomSpace = beltHeight,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                )
+                Column(
+                    verticalArrangement = Arrangement.Bottom,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    ControlBelt(modifier = Modifier.onSizeChanged {
+                        beltHeight = with(density) { it.height.toDp() }
+                    })
+                    Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+                }
             }
         }
     }
 
-    // TODO: cast button
     @Composable
     fun CastButtonXmlView() {
         AndroidView(factory = { context ->
@@ -110,7 +189,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @Composable
-    fun CardsList(modifier: Modifier) {
+    fun CardsList(bottomSpace: Dp, modifier: Modifier) {
         LazyVerticalGrid(
             contentPadding = PaddingValues(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -118,16 +197,17 @@ class MainActivity : AppCompatActivity() {
             columns = GridCells.Fixed(2),
             modifier = modifier
         ) {
-            item(span = {
-                GridItemSpan(maxLineSpan)
-            }) {
-                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-            }
             items(Stations.stationsList) { item ->
                 RadioCard(station = item)
             }
-            item {
-                Spacer(Modifier.height(100.dp))
+            // Keeps the last cards scrollable above the control belt and system bar.
+            item(span = {
+                GridItemSpan(maxLineSpan)
+            }) {
+                Column {
+                    Spacer(Modifier.height(bottomSpace))
+                    Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+                }
             }
         }
     }
@@ -142,15 +222,7 @@ class MainActivity : AppCompatActivity() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        model.radioCast(radioStation = station, toast = {
-                            val tst = Toast.makeText(
-                                ctx,
-                                "Moja Kochana Jadziu CASTUJ :)",
-                                Toast.LENGTH_SHORT
-                            )
-                            tst.setGravity(Gravity.CENTER, 0, 0)
-                            tst.show()
-                        })
+                        model.radioCast(radioStation = station, onNoSession = ::showDeviceChooser)
                     }) {
                 Text(
                     style = AppTypography.titleLarge, text = station.name, modifier = Modifier
@@ -197,84 +269,174 @@ class MainActivity : AppCompatActivity() {
 
     @Composable
     fun ControlBelt(model: MainViewModel = viewModel(), modifier: Modifier) {
-        val value by model.stateLiveData.observeAsState()
-        val name by model.stNameLiveData.observeAsState("")
-        val imgUri by model.imgLiveData.observeAsState()
-        val isShowing by model.beltIsShowing.observeAsState(false)
-        val castDevName by model.castDevName.observeAsState("")
+        val state by model.uiState.collectAsStateWithLifecycle()
 
-        OutlinedCard(
+        // Hidden until there is something to control: a playing station or a connected device.
+        AnimatedVisibility(
+            visible = state.isBeltShowing || state.isConnected,
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut(),
             modifier = modifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
         ) {
-
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
+            OutlinedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
             ) {
-                if (isShowing) Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            ImageRequest.Builder(LocalContext.current)
-                                .data(data = imgUri)
-                                .placeholder(R.drawable.baseline_radio_24)
-                                .decoderFactory(SvgDecoder.Factory())
-                                .crossfade(500)
-                                .build()
-                        ),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(60.dp)
-                            .clip(CircleShape)
-                            .padding(start = 16.dp)
+                if (state.isBeltShowing) {
+                    PlayerRow(state = state, model = model)
+                    VolumeRow(
+                        volume = state.volume,
+                        isMuted = state.isMuted,
+                        onVolumeChange = { model.setVolume(it) },
+                        onToggleMute = { model.toggleMute() }
                     )
-                    Column(
-                        modifier = Modifier
-                            .padding(start = 24.dp, end = 24.dp)
-                            .width(120.dp)
-                    ) {
-                        Text(style = AppTypography.titleLarge, modifier = Modifier, text = name)
-                        Text(style = AppTypography.titleSmall, text = castDevName)
-                    }
-                    Box(modifier = Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-                        IconButton(
-                            onClick = { model.playPause() },
-                            modifier = Modifier.padding()
-                        ) {
-                            if (value == MainViewModel.PLAYING || value == MainViewModel.PAUSE) {
-                                Icon(
-                                    imageVector =
-                                        when (value) {
-                                            MainViewModel.PLAYING -> ImageVector.vectorResource(id = R.drawable.pause_24)
-                                            MainViewModel.PAUSE -> ImageVector.vectorResource(id = R.drawable.play_24)
-                                            else -> ImageVector.vectorResource(id = R.drawable.play_24)
-                                        }, contentDescription = null, modifier = Modifier
-                                        .size(40.dp)
-                                        .padding(8.dp)
-                                        .clip(CircleShape)
-                                )
-                            }
-                        }
-                        if (value == MainViewModel.BUFFERING) {
-                        CircularProgressIndicator()
-                        }
-                    }
-
-
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 16.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CastButtonXmlView()
+                } else {
+                    ConnectedRow(state = state, model = model)
                 }
             }
+        }
+    }
+
+    @Composable
+    fun PlayerRow(state: PlayerUiState, model: MainViewModel) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .padding(end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(
+                    ImageRequest.Builder(LocalContext.current)
+                        .data(data = state.imageUri)
+                        .placeholder(R.drawable.baseline_radio_24)
+                        .decoderFactory(SvgDecoder.Factory())
+                        .crossfade(500)
+                        .build()
+                ),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .padding(start = 16.dp)
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 16.dp, end = 8.dp)
+            ) {
+                Text(
+                    style = AppTypography.titleLarge,
+                    text = state.stationName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    style = AppTypography.titleSmall,
+                    text = state.castDeviceName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            IconButton(onClick = { model.stop() }) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.stop_24),
+                    contentDescription = stringResource(R.string.stop)
+                )
+            }
+            Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                IconButton(
+                    onClick = { model.playPause() },
+                    modifier = Modifier.padding()
+                ) {
+                    if (state.status == PlaybackStatus.PLAYING || state.status == PlaybackStatus.PAUSED) {
+                        Icon(
+                            imageVector =
+                                when (state.status) {
+                                    PlaybackStatus.PLAYING -> ImageVector.vectorResource(id = R.drawable.pause_24)
+                                    else -> ImageVector.vectorResource(id = R.drawable.play_24)
+                                }, contentDescription = null, modifier = Modifier
+                                .size(40.dp)
+                                .padding(8.dp)
+                                .clip(CircleShape)
+                        )
+                    }
+                }
+                if (state.status == PlaybackStatus.BUFFERING) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun ConnectedRow(state: PlayerUiState, model: MainViewModel) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .padding(start = 16.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(style = AppTypography.titleSmall, text = stringResource(R.string.connected_to))
+                Text(
+                    style = AppTypography.titleLarge,
+                    text = state.castDeviceName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            state.lastStation?.let { station ->
+                FilledTonalButton(onClick = { model.radioCast(station, onNoSession = ::showDeviceChooser) }) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.play_24),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(text = station.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun VolumeRow(
+        volume: Float,
+        isMuted: Boolean,
+        onVolumeChange: (Float) -> Unit,
+        onToggleMute: () -> Unit
+    ) {
+        // Local value while dragging, so the Cast device gets one request per gesture.
+        var dragVolume by remember { mutableStateOf<Float?>(null) }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 8.dp, end = 24.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onToggleMute) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(
+                        id = if (isMuted) R.drawable.volume_off_24 else R.drawable.volume_up_24
+                    ),
+                    contentDescription = stringResource(if (isMuted) R.string.unmute else R.string.mute)
+                )
+            }
+            Slider(
+                value = dragVolume ?: volume,
+                onValueChange = { dragVolume = it },
+                onValueChangeFinished = {
+                    dragVolume?.let(onVolumeChange)
+                    dragVolume = null
+                },
+                enabled = !isMuted,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
