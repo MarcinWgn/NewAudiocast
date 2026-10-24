@@ -89,6 +89,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var lastErrorAt = 0L
 
+    // True while the previous stream is being stopped before loading a new station.
+    private var isSwitchingStation = false
+
 
     private var mCastSession: CastSession? = null
     private var mSessionManager: SessionManager? = null
@@ -242,6 +245,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadStation(client: RemoteMediaClient, radioStation: RadioStation) {
+        // Tapping the station that is already on: don't restart the stream, just resume it.
+        if (client.mediaInfo?.contentId == radioStation.uri) {
+            when (client.playerState) {
+                MediaStatus.PLAYER_STATE_PLAYING, MediaStatus.PLAYER_STATE_BUFFERING -> return
+                MediaStatus.PLAYER_STATE_PAUSED -> {
+                    client.play()
+                    return
+                }
+            }
+        }
+        // Replacing a live stream that is still playing can leave the Default Media Receiver
+        // stuck in BUFFERING, so stop the current media first and load once the receiver is idle.
+        if (client.playerState != MediaStatus.PLAYER_STATE_IDLE &&
+            client.playerState != MediaStatus.PLAYER_STATE_UNKNOWN
+        ) {
+            isSwitchingStation = true
+            client.stop().setResultCallback {
+                isSwitchingStation = false
+                load(client, radioStation)
+            }
+        } else {
+            load(client, radioStation)
+        }
+    }
+
+    private fun load(client: RemoteMediaClient, radioStation: RadioStation) {
         val mediaMetaData = MediaMetadata(MediaMetadata.MEDIA_TYPE_GENERIC)
         mediaMetaData.putString(MediaMetadata.KEY_TITLE, radioStation.name)
         mediaMetaData.addImage(WebImage(Uri.parse(radioStation.img)))
@@ -250,6 +279,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .setStreamType(MediaInfo.STREAM_TYPE_LIVE)
             .setContentType(radioStation.contentType)
             .setMetadata(mediaMetaData)
+            .apply { radioStation.hlsSegmentFormat?.let { setHlsSegmentFormat(it) } }
             .build()
 
         val mediaLoadRequestData = MediaLoadRequestData.Builder()
@@ -270,6 +300,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun checkState(remoteMediaClient: RemoteMediaClient) {
+        // Keep the belt visible during the intermediate stop of a station switch.
+        if (isSwitchingStation) return
 
         if (remoteMediaClient.playerState == MediaStatus.PLAYER_STATE_IDLE &&
             remoteMediaClient.idleReason in STOPPED_IDLE_REASONS

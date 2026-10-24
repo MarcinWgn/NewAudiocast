@@ -5,7 +5,9 @@ class RadioStation(
     val uri: String,
     val img: String,
     val page: String,
-    val contentType: String = MP3
+    val contentType: String = MP3,
+    // HlsSegmentFormat value, needed when HLS segments are not MPEG-TS (e.g. packed .aac).
+    val hlsSegmentFormat: String? = null
 ) {
     companion object {
         const val MP3 = "audio/mpeg"

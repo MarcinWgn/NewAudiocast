@@ -25,15 +25,19 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -172,7 +176,12 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             )
-            Box(modifier = Modifier.weight(1f)) {
+            // In landscape the navigation bar and camera cutout sit on the sides.
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+            ) {
                 CardsList(
                     bottomSpace = beltHeight,
                     modifier = Modifier
@@ -209,7 +218,7 @@ class MainActivity : AppCompatActivity() {
             contentPadding = PaddingValues(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Adaptive(minSize = 170.dp),
             modifier = modifier
         ) {
             items(Stations.stationsList) { item ->
@@ -285,6 +294,8 @@ class MainActivity : AppCompatActivity() {
     @Composable
     fun ControlBelt(model: MainViewModel = viewModel(), modifier: Modifier) {
         val state by model.uiState.collectAsStateWithLifecycle()
+        val isLandscape =
+            LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
         // Hidden until there is something to control: a playing station or a connected device.
         AnimatedVisibility(
@@ -298,7 +309,21 @@ class MainActivity : AppCompatActivity() {
                     .fillMaxWidth()
                     .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
             ) {
-                if (state.isBeltShowing) {
+                if (state.isBeltShowing && isLandscape) {
+                    // Low screen: player and volume side by side to keep the belt short.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        PlayerRow(state = state, model = model, modifier = Modifier.weight(1f))
+                        VolumeRow(
+                            volume = state.volume,
+                            isMuted = state.isMuted,
+                            onVolumeChange = { model.setVolume(it) },
+                            onToggleMute = { model.toggleMute() },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 8.dp, end = 24.dp)
+                        )
+                    }
+                } else if (state.isBeltShowing) {
                     PlayerRow(state = state, model = model)
                     VolumeRow(
                         volume = state.volume,
@@ -314,9 +339,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     @Composable
-    fun PlayerRow(state: PlayerUiState, model: MainViewModel) {
+    fun PlayerRow(state: PlayerUiState, model: MainViewModel, modifier: Modifier = Modifier) {
         Row(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .height(80.dp)
                 .padding(end = 8.dp),
@@ -423,15 +448,14 @@ class MainActivity : AppCompatActivity() {
         volume: Float,
         isMuted: Boolean,
         onVolumeChange: (Float) -> Unit,
-        onToggleMute: () -> Unit
+        onToggleMute: () -> Unit,
+        modifier: Modifier = Modifier.padding(start = 8.dp, end = 24.dp, bottom = 8.dp)
     ) {
         // Local value while dragging, so the Cast device gets one request per gesture.
         var dragVolume by remember { mutableStateOf<Float?>(null) }
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 8.dp, end = 24.dp, bottom = 8.dp),
+            modifier = modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onToggleMute) {

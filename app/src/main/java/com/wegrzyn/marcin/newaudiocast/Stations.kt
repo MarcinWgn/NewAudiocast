@@ -1,5 +1,7 @@
 package com.wegrzyn.marcin.newaudiocast
 
+import com.google.android.gms.cast.HlsSegmentFormat
+
 class Stations {
     companion object {
         val stationsList = arrayListOf(
@@ -41,10 +43,12 @@ class Stations {
                 RadioStation.AAC
             ),
             RadioStation(
-                "Trójka",
-                "http://stream3.polskieradio.pl:8904/;",
-                "https://trojka.polskieradio.pl/logo_trojka.svg",
-                "https://trojka.polskieradio.pl/ramowka"
+                name = "Trójka",
+                uri = "https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8",
+                img = "https://trojka.polskieradio.pl/logo_trojka.svg",
+                page = "https://trojka.polskieradio.pl/ramowka",
+                contentType = RadioStation.HLS,
+                hlsSegmentFormat = HlsSegmentFormat.AAC
             ),
             RadioStation(
                 "Antyradio",
