@@ -36,7 +36,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
 
     companion object {
-        val TAG = "TAGTEST"
+        private const val TAG = "MainViewModel"
 
         private const val PREFS_NAME = "player"
         private const val KEY_LAST_STATION = "last_station"
@@ -79,7 +79,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(
         PlayerUiState(
             lastStation = prefs.getString(KEY_LAST_STATION, null)
-                ?.let { name -> Stations.stationsList.find { it.name == name } }
+                ?.let { name -> Stations.stationsList.find { it.name == name } },
+            sleepTimerEndsAt = SleepTimer.endsAt(application)
         )
     )
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -115,6 +116,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             markDisconnected()
             p0.remoteMediaClient?.stop()
             detachSession()
+            cancelSleepTimer()
         }
 
         override fun onSessionEnding(p0: CastSession) {
@@ -166,6 +168,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
+        // Covers an update installed while a timer was running (the app isn't started for that).
+        SleepTimer.restore(application)
         mCastContextExecutor
             .addOnSuccessListener { castContext ->
 
@@ -180,8 +184,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .addOnFailureListener {
                 Log.d(TAG, "session manager: $it")
             }
-
-        Log.d(TAG, "ViewModel Start --> init")
     }
 
     override fun onCleared() {
@@ -192,8 +194,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             CastSession::class.java
         )
         detachSession()
-
-        Log.d(TAG, "onCleared")
     }
 
     private fun attachSession(session: CastSession) {
@@ -288,8 +288,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .build()
 
         client.load(mediaLoadRequestData).setResultCallback {
-            Log.d(TAG, "wynik data: ${it.mediaError?.type}")
-            Log.d(TAG, "wynik error: ${it.mediaError?.detailedErrorCode}")
             if (!it.status.isSuccess && it.status.statusCode !in IGNORED_LOAD_CODES) {
                 reportPlaybackFailed(radioStation.name)
             }
@@ -353,7 +351,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stop() {
+        cancelSleepTimer()
         remoteMediaClient?.stop()
+    }
+
+    /** Stops playback after [minutes]; null turns the timer off. */
+    fun setSleepTimer(minutes: Int?) {
+        if (minutes == null) {
+            cancelSleepTimer()
+            return
+        }
+        val endsAt = SleepTimer.start(getApplication(), minutes)
+        _uiState.update { it.copy(sleepTimerEndsAt = endsAt) }
+    }
+
+    private fun cancelSleepTimer() {
+        if (_uiState.value.sleepTimerEndsAt == null) return
+        SleepTimer.cancel(getApplication())
+        _uiState.update { it.copy(sleepTimerEndsAt = null) }
     }
 
     fun setVolume(volume: Float) {

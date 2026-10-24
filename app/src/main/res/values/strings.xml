@@ -6,4 +6,8 @@
     <string name="unmute">Włącz dźwięk</string>
     <string name="connected_to">Połączono z</string>
     <string name="playback_failed">Nie udało się odtworzyć: %1$s</string>
+    <string name="cast_unavailable">Moja Kochana Jadziu CASTUJ :)</string>
+    <string name="sleep_timer">Wyłącznik czasowy</string>
+    <string name="sleep_timer_off">Wyłącz</string>
+    <string name="sleep_timer_minutes">%1$d min</string>
 </resources>

@@ -13,7 +13,9 @@ data class PlayerUiState(
     val volume: Float = 0f,
     val isMuted: Boolean = false,
     val isConnected: Boolean = false,
-    val lastStation: RadioStation? = null
+    val lastStation: RadioStation? = null,
+    // Elapsed-realtime moment the sleep timer stops playback, null when off.
+    val sleepTimerEndsAt: Long? = null
 )
 
 sealed interface PlayerEvent {

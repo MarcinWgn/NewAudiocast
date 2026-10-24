@@ -1,93 +1,17 @@
 package com.wegrzyn.marcin.newaudiocast
 
-import android.content.Context
-import android.content.Intent
-import android.content.res.Configuration
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.net.toUri
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.mediarouter.app.MediaRouteButton
 import androidx.mediarouter.app.MediaRouteChooserDialog
-import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
-import coil.decode.SvgDecoder
-import coil.request.ImageRequest
-import com.google.android.gms.cast.framework.CastButtonFactory
 
 class MainActivity : AppCompatActivity() {
 
@@ -96,29 +20,39 @@ class MainActivity : AppCompatActivity() {
     companion object {
 
         private const val VOLUME_STEP = 0.05f
+
+        // Runtime permission since Android 17; without it Cast device discovery finds nothing.
+        private const val LOCAL_NETWORK_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
+        private const val LOCAL_NETWORK_PERMISSION_SDK = 37
     }
+
+    private val localNetworkPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        requestLocalNetworkPermission()
 
         setContent {
             AppTheme {
-                PortraitView()
+                MainScreen(model = vm, onNoSession = ::showDeviceChooser)
             }
         }
     }
 
 
+    private fun requestLocalNetworkPermission() {
+        if (Build.VERSION.SDK_INT < LOCAL_NETWORK_PERMISSION_SDK) return
+        if (checkSelfPermission(LOCAL_NETWORK_PERMISSION) == PackageManager.PERMISSION_GRANTED) return
+        localNetworkPermission.launch(LOCAL_NETWORK_PERMISSION)
+    }
+
     // Opens the Cast device picker; falls back to a toast when Cast is unavailable.
     private fun showDeviceChooser() {
         val selector = vm.routeSelector
         if (selector == null) {
-            val tst = Toast.makeText(
-                this,
-                "Moja Kochana Jadziu CASTUJ :)",
-                Toast.LENGTH_SHORT
-            )
+            val tst = Toast.makeText(this, R.string.cast_unavailable, Toast.LENGTH_SHORT)
             tst.setGravity(Gravity.CENTER, 0, 0)
             tst.show()
             return
@@ -131,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Hardware volume keys control the Cast device while a session is connected.
+    // Consuming the event here keeps the system from also adjusting the Cast media session volume.
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val delta = when (event.keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> VOLUME_STEP
@@ -141,342 +76,4 @@ class MainActivity : AppCompatActivity() {
         if (event.action == KeyEvent.ACTION_DOWN) vm.adjustVolume(delta)
         return true
     }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun PortraitView() {
-        val density = LocalDensity.current
-        var beltHeight by remember { mutableStateOf(0.dp) }
-        // Bar stays put; its color changes once the list scrolls under it.
-        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-        val snackbarHostState = remember { SnackbarHostState() }
-
-        LaunchedEffect(Unit) {
-            vm.events.collect { event ->
-                when (event) {
-                    is PlayerEvent.PlaybackFailed -> snackbarHostState.showSnackbar(
-                        getString(R.string.playback_failed, event.stationName)
-                    )
-                }
-            }
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-        ) {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                scrollBehavior = scrollBehavior,
-                expandedHeight = 48.dp,
-                actions = {
-                    Box(modifier = Modifier.padding(end = 8.dp)) {
-                        CastButtonXmlView()
-                    }
-                }
-            )
-            // In landscape the navigation bar and camera cutout sit on the sides.
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-            ) {
-                CardsList(
-                    bottomSpace = beltHeight,
-                    modifier = Modifier
-                        .fillMaxHeight()
-                )
-                Column(
-                    verticalArrangement = Arrangement.Bottom,
-                    modifier = Modifier.fillMaxHeight()
-                ) {
-                    SnackbarHost(hostState = snackbarHostState)
-                    ControlBelt(modifier = Modifier.onSizeChanged {
-                        beltHeight = with(density) { it.height.toDp() }
-                    })
-                    Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun CastButtonXmlView() {
-        AndroidView(factory = { context ->
-            val castButton = MediaRouteButton(context)
-            CastButtonFactory.setUpMediaRouteButton(context, castButton)
-            return@AndroidView castButton
-        }, update = {
-
-        })
-    }
-
-    @Composable
-    fun CardsList(bottomSpace: Dp, modifier: Modifier) {
-        LazyVerticalGrid(
-            contentPadding = PaddingValues(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            columns = GridCells.Adaptive(minSize = 170.dp),
-            modifier = modifier
-        ) {
-            items(Stations.stationsList) { item ->
-                RadioCard(station = item)
-            }
-            // Keeps the last cards scrollable above the control belt and system bar.
-            item(span = {
-                GridItemSpan(maxLineSpan)
-            }) {
-                Column {
-                    Spacer(Modifier.height(bottomSpace))
-                    Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun RadioCard(station: RadioStation, model: MainViewModel = viewModel()) {
-        val ctx = LocalContext.current
-        OutlinedCard(
-//            shape = RoundedCornerShape(20.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        model.radioCast(radioStation = station, onNoSession = ::showDeviceChooser)
-                    }) {
-                Text(
-                    style = AppTypography.titleLarge, text = station.name, modifier = Modifier
-                        .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp)
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(data = station.img)
-                            .decoderFactory(SvgDecoder.Factory())
-                            .crossfade(1000)
-                            .build(),
-                        placeholder = painterResource(R.drawable.baseline_radio_24),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .padding(8.dp)
-                            .clip(CircleShape)
-                    )
-
-                    Icon(
-                        painter = painterResource(id = R.drawable.round_playlist_play_24),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .clickable {
-                                goPage(station.page, ctx)
-                            }
-                    )
-                }
-            }
-        }
-    }
-
-    private fun goPage(uriString: String, context: Context) {
-        val uri = uriString.toUri()
-        context.startActivity(Intent(Intent.ACTION_VIEW, uri), null)
-    }
-
-
-    @Composable
-    fun ControlBelt(model: MainViewModel = viewModel(), modifier: Modifier) {
-        val state by model.uiState.collectAsStateWithLifecycle()
-        val isLandscape =
-            LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-        // Hidden until there is something to control: a playing station or a connected device.
-        AnimatedVisibility(
-            visible = state.isBeltShowing || state.isConnected,
-            enter = slideInVertically { it } + fadeIn(),
-            exit = slideOutVertically { it } + fadeOut(),
-            modifier = modifier
-        ) {
-            OutlinedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
-            ) {
-                if (state.isBeltShowing && isLandscape) {
-                    // Low screen: player and volume side by side to keep the belt short.
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        PlayerRow(state = state, model = model, modifier = Modifier.weight(1f))
-                        VolumeRow(
-                            volume = state.volume,
-                            isMuted = state.isMuted,
-                            onVolumeChange = { model.setVolume(it) },
-                            onToggleMute = { model.toggleMute() },
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(start = 8.dp, end = 24.dp)
-                        )
-                    }
-                } else if (state.isBeltShowing) {
-                    PlayerRow(state = state, model = model)
-                    VolumeRow(
-                        volume = state.volume,
-                        isMuted = state.isMuted,
-                        onVolumeChange = { model.setVolume(it) },
-                        onToggleMute = { model.toggleMute() }
-                    )
-                } else {
-                    ConnectedRow(state = state, model = model)
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun PlayerRow(state: PlayerUiState, model: MainViewModel, modifier: Modifier = Modifier) {
-        Row(
-            modifier = modifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .padding(end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = rememberAsyncImagePainter(
-                    ImageRequest.Builder(LocalContext.current)
-                        .data(data = state.imageUri)
-                        .placeholder(R.drawable.baseline_radio_24)
-                        .decoderFactory(SvgDecoder.Factory())
-                        .crossfade(500)
-                        .build()
-                ),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .padding(start = 16.dp)
-            )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp, end = 8.dp)
-            ) {
-                Text(
-                    style = AppTypography.titleLarge,
-                    text = state.stationName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    style = AppTypography.titleSmall,
-                    text = state.castDeviceName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            IconButton(onClick = { model.stop() }) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.stop_24),
-                    contentDescription = stringResource(R.string.stop)
-                )
-            }
-            Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
-                IconButton(
-                    onClick = { model.playPause() },
-                    modifier = Modifier.padding()
-                ) {
-                    if (state.status == PlaybackStatus.PLAYING || state.status == PlaybackStatus.PAUSED) {
-                        Icon(
-                            imageVector =
-                                when (state.status) {
-                                    PlaybackStatus.PLAYING -> ImageVector.vectorResource(id = R.drawable.pause_24)
-                                    else -> ImageVector.vectorResource(id = R.drawable.play_24)
-                                }, contentDescription = null, modifier = Modifier
-                                .size(40.dp)
-                                .padding(8.dp)
-                                .clip(CircleShape)
-                        )
-                    }
-                }
-                if (state.status == PlaybackStatus.BUFFERING) {
-                    CircularProgressIndicator()
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun ConnectedRow(state: PlayerUiState, model: MainViewModel) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .padding(start = 16.dp, end = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(style = AppTypography.titleSmall, text = stringResource(R.string.connected_to))
-                Text(
-                    style = AppTypography.titleLarge,
-                    text = state.castDeviceName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            state.lastStation?.let { station ->
-                FilledTonalButton(onClick = { model.radioCast(station, onNoSession = ::showDeviceChooser) }) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(id = R.drawable.play_24),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(text = station.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun VolumeRow(
-        volume: Float,
-        isMuted: Boolean,
-        onVolumeChange: (Float) -> Unit,
-        onToggleMute: () -> Unit,
-        modifier: Modifier = Modifier.padding(start = 8.dp, end = 24.dp, bottom = 8.dp)
-    ) {
-        // Local value while dragging, so the Cast device gets one request per gesture.
-        var dragVolume by remember { mutableStateOf<Float?>(null) }
-
-        Row(
-            modifier = modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onToggleMute) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(
-                        id = if (isMuted) R.drawable.volume_off_24 else R.drawable.volume_up_24
-                    ),
-                    contentDescription = stringResource(if (isMuted) R.string.unmute else R.string.mute)
-                )
-            }
-            Slider(
-                value = dragVolume ?: volume,
-                onValueChange = { dragVolume = it },
-                onValueChangeFinished = {
-                    dragVolume?.let(onVolumeChange)
-                    dragVolume = null
-                },
-                enabled = !isMuted,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
 }
-
