@@ -97,5 +97,7 @@ class Stations {
             )
 
         )
+
+        fun byName(name: String): RadioStation? = stationsList.find { it.name == name }
     }
 }

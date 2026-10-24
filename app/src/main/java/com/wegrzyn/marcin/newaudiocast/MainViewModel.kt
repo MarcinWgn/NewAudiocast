@@ -1,17 +1,12 @@
 package com.wegrzyn.marcin.newaudiocast
 
 import android.app.Application
-import android.content.Context
 import android.os.SystemClock
-import android.net.Uri
 import android.util.Log
-import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.mediarouter.media.MediaRouteSelector
 import com.google.android.gms.cast.Cast
 import com.google.android.gms.cast.CastStatusCodes
-import com.google.android.gms.cast.MediaInfo
-import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
 import com.google.android.gms.cast.MediaStatus
 import com.google.android.gms.cast.framework.CastContext
@@ -20,7 +15,6 @@ import com.google.android.gms.cast.framework.SessionManager
 import com.google.android.gms.cast.framework.SessionManagerListener
 import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.google.android.gms.common.api.CommonStatusCodes
-import com.google.android.gms.common.images.WebImage
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
@@ -37,9 +31,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val TAG = "MainViewModel"
-
-        private const val PREFS_NAME = "player"
-        private const val KEY_LAST_STATION = "last_station"
 
         private val STOPPED_IDLE_REASONS = setOf(
             MediaStatus.IDLE_REASON_FINISHED,
@@ -74,12 +65,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isCasting: Boolean
         get() = mCastSession?.isConnected == true
 
-    private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
     private val _uiState = MutableStateFlow(
         PlayerUiState(
-            lastStation = prefs.getString(KEY_LAST_STATION, null)
-                ?.let { name -> Stations.stationsList.find { it.name == name } },
+            lastStation = LastStation.get(application),
             sleepTimerEndsAt = SleepTimer.endsAt(application)
         )
     )
@@ -100,6 +88,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Station picked before any Cast device was connected; played once a session starts.
     private var pendingStation: RadioStation? = null
+
+    // True once CastContext is available, i.e. radioCast() can find a session or open the picker.
+    private val _castReady = MutableStateFlow(false)
+    val castReady: StateFlow<Boolean> = _castReady.asStateFlow()
 
     val routeSelector: MediaRouteSelector?
         get() = castContext?.mergedSelector
@@ -152,7 +144,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             attachSession(p0)
             pendingStation?.let { station ->
                 pendingStation = null
-                p0.remoteMediaClient?.let { loadStation(it, station) }
+                p0.remoteMediaClient?.let { castStation(it, station) }
             }
         }
 
@@ -170,6 +162,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Covers an update installed while a timer was running (the app isn't started for that).
         SleepTimer.restore(application)
+        Schedule.rescheduleAll(application)
         mCastContextExecutor
             .addOnSuccessListener { castContext ->
 
@@ -180,6 +173,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     mSessionManagerListener,
                     CastSession::class.java
                 )
+                _castReady.value = true
             }
             .addOnFailureListener {
                 Log.d(TAG, "session manager: $it")
@@ -232,7 +226,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val client = session?.remoteMediaClient
         if (client != null) {
             attachSession(session)
-            loadStation(client, radioStation)
+            castStation(client, radioStation)
         } else {
             Log.d(TAG, "remote media client is null")
             pendingStation = radioStation
@@ -244,56 +238,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         pendingStation = null
     }
 
-    private fun loadStation(client: RemoteMediaClient, radioStation: RadioStation) {
-        // Tapping the station that is already on: don't restart the stream, just resume it.
-        if (client.mediaInfo?.contentId == radioStation.uri) {
-            when (client.playerState) {
-                MediaStatus.PLAYER_STATE_PLAYING, MediaStatus.PLAYER_STATE_BUFFERING -> return
-                MediaStatus.PLAYER_STATE_PAUSED -> {
-                    client.play()
-                    return
+    private fun castStation(client: RemoteMediaClient, radioStation: RadioStation) {
+        client.loadStation(
+            radioStation,
+            onSwitching = { isSwitchingStation = it },
+            onLoadResult = { result ->
+                if (result != null && !result.status.isSuccess &&
+                    result.status.statusCode !in IGNORED_LOAD_CODES
+                ) {
+                    reportPlaybackFailed(radioStation.name)
                 }
             }
-        }
-        // Replacing a live stream that is still playing can leave the Default Media Receiver
-        // stuck in BUFFERING, so stop the current media first and load once the receiver is idle.
-        if (client.playerState != MediaStatus.PLAYER_STATE_IDLE &&
-            client.playerState != MediaStatus.PLAYER_STATE_UNKNOWN
-        ) {
-            isSwitchingStation = true
-            client.stop().setResultCallback {
-                isSwitchingStation = false
-                load(client, radioStation)
-            }
-        } else {
-            load(client, radioStation)
-        }
-    }
-
-    private fun load(client: RemoteMediaClient, radioStation: RadioStation) {
-        val mediaMetaData = MediaMetadata(MediaMetadata.MEDIA_TYPE_GENERIC)
-        mediaMetaData.putString(MediaMetadata.KEY_TITLE, radioStation.name)
-        mediaMetaData.addImage(WebImage(Uri.parse(radioStation.img)))
-
-        val mediaInfo = MediaInfo.Builder(radioStation.uri)
-            .setStreamType(MediaInfo.STREAM_TYPE_LIVE)
-            .setContentType(radioStation.contentType)
-            .setMetadata(mediaMetaData)
-            .apply { radioStation.hlsSegmentFormat?.let { setHlsSegmentFormat(it) } }
-            .build()
-
-        val mediaLoadRequestData = MediaLoadRequestData.Builder()
-            .setMediaInfo(mediaInfo)
-            .setAutoplay(true)
-            .build()
-
-        client.load(mediaLoadRequestData).setResultCallback {
-            if (!it.status.isSuccess && it.status.statusCode !in IGNORED_LOAD_CODES) {
-                reportPlaybackFailed(radioStation.name)
-            }
-        }
-
-        prefs.edit { putString(KEY_LAST_STATION, radioStation.name) }
+        )
+        LastStation.set(getApplication(), radioStation)
         _uiState.update { it.copy(lastStation = radioStation) }
     }
 

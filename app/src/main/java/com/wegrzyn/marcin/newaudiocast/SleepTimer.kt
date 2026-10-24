@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.edit
 import com.google.android.gms.cast.framework.CastContext
@@ -19,9 +18,6 @@ object SleepTimer {
 
     private const val PREFS_NAME = "sleep_timer"
     private const val KEY_ENDS_AT = "ends_at"
-
-    // Without the exact-alarm permission Android stretches shorter windows to about this anyway.
-    private const val INEXACT_WINDOW_MS = 10 * 60_000L
 
     /** Elapsed-realtime moment the timer fires, or null when no timer is set. */
     fun endsAt(context: Context): Long? {
@@ -42,24 +38,12 @@ object SleepTimer {
         endsAt(context)?.let { schedule(context, it) }
     }
 
-    /** Exact alarms need the user-granted "Alarms & reminders" permission on API 31+. */
-    fun canScheduleExact(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-            context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
-
     private fun schedule(context: Context, endsAt: Long) {
-        val alarmManager = context.getSystemService(AlarmManager::class.java)
-        val type = AlarmManager.ELAPSED_REALTIME_WAKEUP
-        if (canScheduleExact(context)) {
-            alarmManager.setExactAndAllowWhileIdle(type, endsAt, pendingIntent(context))
-        } else {
-            // A plain inexact alarm may be deferred by up to 75% of the delay; cap it instead.
-            alarmManager.setWindow(type, endsAt, INEXACT_WINDOW_MS, pendingIntent(context))
-        }
+        Alarms.set(context, AlarmManager.ELAPSED_REALTIME_WAKEUP, endsAt, pendingIntent(context))
     }
 
     fun cancel(context: Context) {
-        context.getSystemService(AlarmManager::class.java).cancel(pendingIntent(context))
+        Alarms.cancel(context, pendingIntent(context))
         clear(context)
     }
 
@@ -89,15 +73,5 @@ class SleepTimerReceiver : BroadcastReceiver() {
                 }
                 result.finish()
             }
-    }
-}
-
-/** Re-arms the timer after an app update and once the exact-alarm permission is granted. */
-class SleepTimerRestoreReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        when (intent.action) {
-            Intent.ACTION_MY_PACKAGE_REPLACED,
-            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> SleepTimer.restore(context)
-        }
     }
 }

@@ -1,5 +1,6 @@
 package com.wegrzyn.marcin.newaudiocast
 
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -11,7 +12,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.mediarouter.app.MediaRouteChooserDialog
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class MainActivity : AppCompatActivity() {
 
@@ -19,7 +24,13 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
 
+        /** Station name to play on launch; set by the schedule notification. */
+        const val EXTRA_STATION = "station"
+
         private const val VOLUME_STEP = 0.05f
+
+        // How long a station from the notification waits for the Cast session to resume.
+        private const val SESSION_RESUME_WAIT_MS = 3_000L
 
         // Runtime permission since Android 17; without it Cast device discovery finds nothing.
         private const val LOCAL_NETWORK_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
@@ -33,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         requestLocalNetworkPermission()
+        if (savedInstanceState == null) playFromIntent(intent)
 
         setContent {
             AppTheme {
@@ -41,6 +53,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        playFromIntent(intent)
+    }
+
+    private fun playFromIntent(intent: Intent) {
+        val station = intent.getStringExtra(EXTRA_STATION)?.let { Stations.byName(it) } ?: return
+        intent.removeExtra(EXTRA_STATION)
+        lifecycleScope.launch {
+            vm.castReady.first { it }
+            // Right after launch the framework may still be resuming the session.
+            withTimeoutOrNull(SESSION_RESUME_WAIT_MS) { vm.uiState.first { it.isConnected } }
+            vm.radioCast(station, ::showDeviceChooser)
+        }
+    }
 
     private fun requestLocalNetworkPermission() {
         if (Build.VERSION.SDK_INT < LOCAL_NETWORK_PERMISSION_SDK) return

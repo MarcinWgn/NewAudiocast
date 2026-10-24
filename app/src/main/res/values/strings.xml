@@ -10,4 +10,22 @@
     <string name="sleep_timer">Wyłącznik czasowy</string>
     <string name="sleep_timer_off">Wyłącz</string>
     <string name="sleep_timer_minutes">%1$d min</string>
+    <string name="schedule">Harmonogram</string>
+    <string name="schedule_empty">Brak zaplanowanych audycji.\nDodaj pierwszą przyciskiem +.</string>
+    <string name="schedule_add">Dodaj</string>
+    <string name="schedule_new">Nowa audycja</string>
+    <string name="schedule_edit">Edytuj audycję</string>
+    <string name="schedule_station">Stacja</string>
+    <string name="schedule_days_hint">Bez zaznaczonych dni: jednorazowo</string>
+    <string name="schedule_once">Jednorazowo</string>
+    <string name="schedule_daily">Codziennie</string>
+    <string name="schedule_weekdays">Pon–pt</string>
+    <string name="schedule_weekend">Weekend</string>
+    <string name="schedule_delete">Usuń</string>
+    <string name="save">Zapisz</string>
+    <string name="cancel">Anuluj</string>
+    <string name="back">Wstecz</string>
+    <string name="schedule_channel">Harmonogram stacji</string>
+    <string name="schedule_notification_title">Audycja: %1$s</string>
+    <string name="schedule_notification_text">Nic nie jest castowane. Dotknij, aby włączyć tę stację.</string>
 </resources>

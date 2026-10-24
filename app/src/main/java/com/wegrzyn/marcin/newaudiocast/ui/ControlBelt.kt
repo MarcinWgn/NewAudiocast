@@ -1,10 +1,6 @@
 package com.wegrzyn.marcin.newaudiocast
 
-import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
-import android.os.Build
-import android.provider.Settings
 import android.os.SystemClock
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -52,7 +48,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
@@ -159,8 +154,8 @@ private fun PlayerRow(state: PlayerUiState, model: MainViewModel, modifier: Modi
         SleepTimerButton(remainingMinutes = sleepMinutes, onSelect = { minutes ->
             model.setSleepTimer(minutes)
             // Without exact alarms the stop can come up to ~10 min late; let the user allow them.
-            if (minutes != null && !SleepTimer.canScheduleExact(context)) {
-                openExactAlarmSettings(context)
+            if (minutes != null && !Alarms.canScheduleExact(context)) {
+                Alarms.openExactAlarmSettings(context)
             }
         })
         IconButton(onClick = { model.stop() }) {
@@ -232,13 +227,6 @@ private fun SleepTimerButton(remainingMinutes: Int?, onSelect: (Int?) -> Unit) {
             }
         }
     }
-}
-
-private fun openExactAlarmSettings(context: Context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-    context.startActivity(
-        Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${context.packageName}".toUri())
-    )
 }
 
 /** Whole minutes left until [endsAt] (rounded up), refreshed while counting; null when off or past. */
